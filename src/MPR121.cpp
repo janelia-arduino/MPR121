@@ -18,7 +18,7 @@ MPR121::MPR121()
   running_ = false;
   touch_data_ = 0;
   touch_data_previous_ = 0;
-  auto_touch_status_flag_ = false;
+  any_touched_flag_ = false;
 }
 
 void MPR121::setWire(TwoWire & wire)
@@ -50,8 +50,8 @@ Error MPR121::getError()
 {
   // important - this resets the IRQ pin - as does any I2C comms
 
-  getRegister(OORS1); // OOR registers - we may not have read them yet,
-  getRegister(OORS2); // whereas the other errors should have been caught
+  getRegister(OORS1_REG); // OOR registers - we may not have read them yet,
+  getRegister(OORS2_REG); // whereas the other errors should have been caught
 
   // order of error precedence is determined in this logic block
 
@@ -87,12 +87,6 @@ void MPR121::clearError()
   error_byte_ = 0;
 }
 
-bool MPR121::touchStatusChanged()
-{
-  // :: here forces the compiler to use Arduino's digitalRead, not MPR121's
-  return (auto_touch_status_flag_ || (!::digitalRead(interrupt_pin_)));
-}
-
 void MPR121::updateTouchData()
 {
   if (!isInitialized())
@@ -100,10 +94,10 @@ void MPR121::updateTouchData()
     return;
   }
 
-  auto_touch_status_flag_ = false;
+  any_touched_flag_ = false;
 
   touch_data_previous_ = touch_data_;
-  touch_data_ = (uint16_t)getRegister(TS1) + ((uint16_t)getRegister(TS2)<<8);
+  touch_data_ = (uint16_t)getRegister(TS1_REG) + ((uint16_t)getRegister(TS2_REG)<<8);
 }
 
 bool MPR121::updateBaselineData()
@@ -118,18 +112,18 @@ bool MPR121::updateBaselineData()
   // baseline data
   wire_ptr_->endTransmission(false); // repeated start
 
-  if (touchStatusChanged())
+  if (anyTouched())
   {
-    auto_touch_status_flag_ = true;
+    any_touched_flag_ = true;
   }
 
   if (wire_ptr_->requestFrom(address,(uint8_t)ELECTRODE_COUNT) == ELECTRODE_COUNT)
   {
     for (size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
     { // ELECTRODE_COUNT filtered values
-      if(touchStatusChanged())
+      if(anyTouched())
       {
-        auto_touch_status_flag_ = true;
+        any_touched_flag_ = true;
       }
       baseline_data_[electrode] = wire_ptr_->read()<<2;
     }
@@ -157,23 +151,23 @@ bool MPR121::updateFilteredData()
   //filtered data
   wire_ptr_->endTransmission(false); // repeated start
 
-  if (touchStatusChanged())
+  if (anyTouched())
   {
-    auto_touch_status_flag_ = true;
+    any_touched_flag_ = true;
   }
 
   if (wire_ptr_->requestFrom(address,(uint8_t)26)==26)
   {
     for(size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
     { // ELECTRODE_COUNT filtered values
-      if(touchStatusChanged())
+      if(anyTouched())
       {
-        auto_touch_status_flag_ = true;
+        any_touched_flag_ = true;
       }
       LSB = wire_ptr_->read();
-      if(touchStatusChanged())
+      if(anyTouched())
       {
-        auto_touch_status_flag_ = true;
+        any_touched_flag_ = true;
       }
       MSB = wire_ptr_->read();
       filtered_data_[electrode] = ((MSB << 8) | LSB);
@@ -193,6 +187,11 @@ void MPR121::updateAll()
   updateTouchData();
   updateBaselineData();
   updateFilteredData();
+}
+
+bool MPR121::anyTouched()
+{
+  return any_touched_flag_;
 }
 
 bool MPR121::touched(const uint8_t electrode)
@@ -249,7 +248,7 @@ bool MPR121::isNewTouch(const uint8_t electrode)
   {
     return false; // avoid out of bounds behaviour
   }
-  return ((getPreviousTouchData(electrode) == false) && (touched(electrode) == true));
+  return ((previouslyTouched(electrode) == false) && (touched(electrode) == true));
 }
 
 bool MPR121::isNewRelease(const uint8_t electrode)
@@ -258,7 +257,7 @@ bool MPR121::isNewRelease(const uint8_t electrode)
   {
     return false; // avoid out of bounds behaviour
   }
-  return ((getPreviousTouchData(electrode) == true) && (touched(electrode) == false));
+  return ((previouslyTouched(electrode) == true) && (touched(electrode) == false));
 }
 
 void MPR121::setTouchThreshold(const uint8_t threshold)
@@ -425,7 +424,7 @@ uint8_t MPR121::getRegister(const uint8_t reg)
   }
   value = wire_ptr_->read();
   // auto update errors for registers with error data
-  if (reg == TS2 && ((value&0x80)!=0))
+  if (reg == TS2_REG && ((value&0x80)!=0))
   {
     error_byte_ |= 1<<OVERCURRENT_FLAG_BIT;
   }
@@ -433,7 +432,7 @@ uint8_t MPR121::getRegister(const uint8_t reg)
   {
     error_byte_ &= ~(1<<OVERCURRENT_FLAG_BIT);
   }
-  if ((reg == OORS1 || reg == OORS2) && (value!=0))
+  if ((reg == OORS1_REG || reg == OORS2_REG) && (value!=0))
   {
     error_byte_ |= 1<<OUT_OF_RANGE_BIT;
   }
@@ -470,7 +469,7 @@ bool MPR121::reset()
 
   // AFE2 is one of the few registers that defaults to a non-zero value -
   // checking it is sensible as reading back an incorrect value implies
-  // something went wrong - we also check TS2 bit 7 to see if we have an
+  // something went wrong - we also check TS2_REG bit 7 to see if we have an
   // overcurrent flag set
 
   setRegister(SRST, 0x63); // soft reset
@@ -484,7 +483,7 @@ bool MPR121::reset()
     error_byte_ &= ~(1<<READBACK_FAIL_BIT);
   }
 
-  if ((getRegister(TS2)&0x80)!=0)
+  if ((getRegister(TS2_REG)&0x80)!=0)
   {
     error_byte_ |= 1<<OVERCURRENT_FLAG_BIT;
   }
@@ -513,15 +512,14 @@ bool MPR121::isInitialized()
   return !(error_byte_ & (1<<NOT_INITIALIZED_BIT));
 }
 
-void MPR121::setInterruptPin(const uint8_t pin)
+void MPR121::setInterruptPin(const int pin)
 {
-  // :: here forces the compiler to use Arduino's pinMode, not MPR121's
-  if (!isInitialized())
-  {
-    return;
-  }
-  ::pinMode(pin,INPUT_PULLUP);
   interrupt_pin_ = pin;
+
+  if (pin >= 0))
+  {
+    ::pinMode(pin,INPUT_PULLUP);
+  }
 }
 
 void MPR121::setProximityMode(const ProximityMode mode)
@@ -831,11 +829,11 @@ void MPR121::applySettings(const Settings & settings)
   }
 }
 
-bool MPR121::getPreviousTouchData(const uint8_t electrode)
+bool MPR121::previouslyTouched(const uint8_t electrode)
 {
-  if ((electrode > (ELECTRODE_COUNT - 1)) || !isInitialized())
+  if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
   {
-    return !SUCCESS; // avoid out of bounds behaviour
+    return false; // avoid out of bounds behaviour
   }
 
   return ((touch_data_previous_>>electrode)&1);

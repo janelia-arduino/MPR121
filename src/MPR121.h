@@ -52,11 +52,6 @@ public:
   Error getError();
   void clearError();
 
-  // returns status of the MPR121 INT pin as read via digitalRead() on the
-  // Arduino board - this tells us if there has been a change in touch status
-  // on any active electrode since we last read any data
-  bool touchStatusChanged();
-
   // updates the data from the MPR121 into our internal buffer
   // updateTouchData() does this only for touch on / off status
   // updateBaseLineData() does this for background baseline
@@ -70,6 +65,8 @@ public:
   bool updateBaselineData();
   bool updateFilteredData();
   void updateAll();
+
+  bool anyTouched();
 
   // returns a boolean indicating the touch status of a given electrode
   bool touched(const uint8_t electrode);
@@ -125,14 +122,6 @@ public:
   // MPR121
   bool isRunning();
   bool isInitialized();
-
-  // sets the pin that the MPR121 INT output is connected to on the
-  // Arduino board - does not have to be a hardware interrupt pin
-  // if it is, however, an interrupt service routine will automatically
-  // set an internal flag when a touch event occurs - thus minimising
-  // lost events if you are also reading other data types (filtered data,
-  // baseline data)
-  void setInterruptPin(const uint8_t pin);
 
   // set number of electrodes to use to generate virtual "13th"
   // proximity electrode
@@ -224,11 +213,12 @@ private:
 
   const static uint8_t DIGITAL_PIN_COUNT_MAX = 8;
 
+  // registers
   // touch and OOR statuses
-  const static uint8_t TS1 = 0x00;
-  const static uint8_t TS2 = 0x01;
-  const static uint8_t OORS1 = 0x02;
-  const static uint8_t OORS2 = 0x03;
+  const static uint8_t TS1_REG = 0x00;
+  const static uint8_t TS2_REG = 0x01;
+  const static uint8_t OORS1_REG = 0x02;
+  const static uint8_t OORS2_REG = 0x03;
 
   // filtered data
   const static uint8_t E0FDL = 0x04;
@@ -401,8 +391,6 @@ private:
     uint8_t TTHRESH;
     uint8_t RTHRESH;
 
-    uint8_t INTERRUPT;
-
     // general electrode touch sense baseline filters
     // rising filter
     uint8_t MHDR;
@@ -458,8 +446,6 @@ private:
     Settings():
       TTHRESH(40),
       RTHRESH(20),
-      INTERRUPT(4),   // note that this is not a hardware interrupt, just the digital
-      // pin that the MPR121 ~INT pin is connected to
       MHDR(0x01),
       NHDR(0x01),
       NCLR(0x10),
@@ -501,20 +487,18 @@ private:
   // when recovering from stop mode
   uint8_t error_byte_;
   bool running_;
-  size_t interrupt_pin_;
 
   int filtered_data_[ELECTRODE_COUNT];
   int baseline_data_[ELECTRODE_COUNT];
   uint16_t touch_data_;
   uint16_t touch_data_previous_;
-  bool auto_touch_status_flag_; // we use this to catch touch / release events that happen
-  // during other update calls
+  bool any_touched_flag_;
 
   // applies a complete array of settings from a
   // Settings variable useful if you want to do a bulk setup of the device
   void applySettings(const Settings & settings);
 
-  bool getPreviousTouchData(const uint8_t electrode);
+  bool previouslyTouched(const uint8_t electrode);
 
 };
 
