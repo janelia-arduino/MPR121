@@ -2,10 +2,11 @@
 // MPR121.h
 //
 // Authors:
+// Peter Polidoro polidorop@janelia.hhmi.org
 // Jim Lindblom
 // Stefan Dzisiewski-Smith
 // Peter Krige
-// Peter Polidoro polidorop@janelia.hhmi.org
+// Adafruit <info@adafruit.com>
 // ----------------------------------------------------------------------------
 #ifndef MPR121_H
 #define MPR121_H
@@ -19,11 +20,14 @@ public:
   MPR121();
 
   // defaults to Wire, but can use Wire1 etc.
+  // call this before begin()
+  // call unnecessary if using Wire
   void setWire(TwoWire & wire);
 
   // -------------------- BASIC FUNCTIONS --------------------
 
   // begin() must be called before using any other function
+  // besides setWire()
   // address is optional, default is 0x5A
   // I2C Addresses
   enum Address
@@ -103,12 +107,6 @@ public:
   // for speed freaks only.
   void goSlow();
   void goFast();
-
-  // setRegister() and getRegister() manipulate registers on
-  // the MPR121 directly, whilst correctly stopping and
-  // restarting the MPR121 if necessary
-  void setRegister(const uint8_t reg, const uint8_t value);
-  uint8_t getRegister(const uint8_t reg);
 
   // stop() and run() take the MPR121 in and out of stop mode
   // which reduces current consumption to 3uA
@@ -215,10 +213,10 @@ private:
 
   // registers
   // touch and OOR statuses
-  const static uint8_t TS1_REG = 0x00;
-  const static uint8_t TS2_REG = 0x01;
-  const static uint8_t OORS1_REG = 0x02;
-  const static uint8_t OORS2_REG = 0x03;
+  const static uint8_t TSL = 0x00;
+  const static uint8_t TSH = 0x01;
+  const static uint8_t OORSL = 0x02;
+  const static uint8_t OORSH = 0x03;
 
   // filtered data
   const static uint8_t E0FDL = 0x04;
@@ -493,6 +491,12 @@ private:
   uint16_t touch_data_;
   uint16_t touch_data_previous_;
   bool any_touched_flag_;
+
+  // writeRegister() and readRegister() manipulate registers on
+  // the MPR121 directly, whilst correctly stopping and
+  // restarting the MPR121 if necessary
+  void writeRegister(const uint8_t reg, const uint8_t value);
+  uint8_t readRegister(const uint8_t reg);
 
   // applies a complete array of settings from a
   // Settings variable useful if you want to do a bulk setup of the device

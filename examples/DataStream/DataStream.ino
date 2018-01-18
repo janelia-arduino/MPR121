@@ -4,6 +4,7 @@
 
 
 const long BAUD = 115200;
+const MPR121::Address ADDRESS = ADDRESS_5A;
 
 // this is the touch threshold - setting it low makes it more like a proximity trigger
 // default value is 40 for touch
@@ -18,7 +19,7 @@ void setup()
 {
   Serial.begin(BAUD);
 
-  if(!mpr121.begin())
+  if(!mpr121.begin(ADDRESS))
   {
     Serial.println("error setting up mpr121");
     switch(mpr121.getError())
