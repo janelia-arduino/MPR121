@@ -2,7 +2,7 @@
 // MPR121.cpp
 //
 // Authors:
-// Peter Polidoro polidorop@janelia.hhmi.org
+// Peter Polidoro peterpolidoro@gmail.com
 // Jim Lindblom
 // Stefan Dzisiewski-Smith
 // Peter Krige
