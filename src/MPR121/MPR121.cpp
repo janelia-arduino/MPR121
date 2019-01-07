@@ -23,13 +23,14 @@ MPR121::MPR121()
   // any_touched_flag_ = false;
 }
 
-void MPR121::setupSingleDevice(TwoWire & wire,
+bool MPR121::setupSingleDevice(TwoWire & wire,
   DeviceAddress device_address,
   bool fast_mode)
 {
   setWire(Wire,fast_mode);
   addDevice(device_address);
-  resetAllDevices();
+  bool successfully_reset = resetAllDevices();
+  return succcessfully_reset;
 }
 
 void MPR121::setWire(TwoWire & wire,
@@ -53,12 +54,16 @@ void MPR121::addDevice(DeviceAddress device_address)
   device_addresses_[device_count_++] = device_address;
 }
 
-void MPR121::resetAllDevices()
+bool MPR121::resetAllDevices()
 {
+  bool successfully_reset;
+  bool all_successfully_reset = true;
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    reset(device_addresses_[device_index]);
+    successfully_reset = reset(device_addresses_[device_index]);
+    all_successfully_reset = (all_successfully_reset && successfully_reset);
   }
+  return all_successfully_reset;
 }
 
 // private
@@ -79,14 +84,6 @@ int MPR121::deviceAddressToDeviceIndex(DeviceAddress device_address)
 
 bool MPR121::reset(DeviceAddress device_address)
 {
-  // return SUCCESS if we successfully reset a device at the
-  // address we are expecting
-
-  // AFE2 is one of the few registers that defaults to a non-zero value -
-  // checking it is sensible as reading back an incorrect value implies
-  // something went wrong - we also check TSH bit 7 to see if we have an
-  // overcurrent flag set
-
   // soft reset
   write(device_address,SRST_REGISTER_ADDRESS,SRST_REGISTER_VALUE);
   delay(1);
@@ -94,16 +91,12 @@ bool MPR121::reset(DeviceAddress device_address)
   uint8_t register_data = 0;
   read(device_address,CDT_REGISTER_ADDRESS,register_data);
 
-  Serial << "cdt_register_data: " << _HEX(register_data) << "\n";
-
   if (register_data == CDT_REGISTER_DEFAULT)
   {
-    Serial << "success!!\n";
     return SUCCESS;
   }
   else
   {
-    Serial << "fail!!\n";
     return !SUCCESS;
   }
 
@@ -116,7 +109,7 @@ bool MPR121::reset(DeviceAddress device_address)
   //   error_byte_ &= ~(1<<READBACK_FAIL_BIT);
   // }
 
-  // if ((readRegister(TSH)&0x80)!=0)
+  // if ((readRegister(TSH_REGISTER_ADDRESS)&0x80)!=0)
   // {
   //   error_byte_ |= 1<<OVERCURRENT_FLAG_BIT;
   // }
@@ -133,6 +126,31 @@ bool MPR121::reset(DeviceAddress device_address)
   // {
   //   return !SUCCESS;
   // }
+}
+
+void MPR121::enableDeviceChannels(DeviceAddress device_address,
+  uint8_t number_of_channels_enabled)
+{
+  // if (!isInitialized())
+  // {
+  //   return;
+  // }
+  write(device_address,ECR_REGISTER_ADDRESS,ecr_backup_); // restore backup to return to run mode
+}
+
+void MPR121::stop()
+{
+  // if(!isInitialized())
+  // {
+  //   return;
+  // }
+  ecr_backup_ = readRegister(ECR);  // backup ECR to restore when we enter run
+  writeRegister(ECR, ecr_backup_ & 0xC0); // turn off all electrodes to stop
+}
+
+bool MPR121::isRunning()
+{
+  return running_;
 }
 
 // bool MPR121::begin()
@@ -153,8 +171,8 @@ bool MPR121::reset(DeviceAddress device_address)
 // {
 //   // important - this resets the IRQ pin - as does any I2C comms
 
-//   readRegister(OORSL); // OOR registers - we may not have read them yet,
-//   readRegister(OORSH); // whereas the other errors should have been caught
+//   readRegister(OORSL_REGISTER_ADDRESS); // OOR registers - we may not have read them yet,
+//   readRegister(OORSH_REGISTER_ADDRESS); // whereas the other errors should have been caught
 
 //   // order of error precedence is determined in this logic block
 
@@ -200,7 +218,7 @@ bool MPR121::reset(DeviceAddress device_address)
 //   any_touched_flag_ = false;
 
 //   touch_data_previous_ = touch_data_;
-//   touch_data_ = (uint16_t)readRegister(TSL) + ((uint16_t)readRegister(TSH)<<8);
+//   touch_data_ = (uint16_t)readRegister(TSL_REGISTER_ADDRESS) + ((uint16_t)readRegister(TSH_REGISTER_ADDRESS)<<8);
 // }
 
 // bool MPR121::updateBaselineData()
@@ -453,45 +471,6 @@ bool MPR121::reset(DeviceAddress device_address)
 //     return(0xFF); // avoid out of bounds behaviour
 //   }
 //   return readRegister(E0RTH+(electrode<<1)); // "255" issue is in here somewhere
-// }
-
-// void MPR121::goSlow()
-// {
-//   wire_ptr_->setClock(100000L); // set I2C clock to 100kHz
-// }
-
-// void MPR121::goFast()
-// {
-//   wire_ptr_->setClock(400000L); // set I2C clock to 400kHz
-// }
-
-// void MPR121::run()
-// {
-//   if (!isInitialized())
-//   {
-//     return;
-//   }
-//   writeRegister(ECR,ecr_backup_); // restore backup to return to run mode
-// }
-
-// void MPR121::stop()
-// {
-//   if(!isInitialized())
-//   {
-//     return;
-//   }
-//   ecr_backup_ = readRegister(ECR);  // backup ECR to restore when we enter run
-//   writeRegister(ECR, ecr_backup_ & 0xC0); // turn off all electrodes to stop
-// }
-
-// bool MPR121::isRunning()
-// {
-//   return running_;
-// }
-
-// bool MPR121::isInitialized()
-// {
-//   return !(error_byte_ & (1<<NOT_INITIALIZED_BIT));
 // }
 
 // void MPR121::setInterruptPin(const int pin)
@@ -820,7 +799,7 @@ bool MPR121::reset(DeviceAddress device_address)
 //   }
 //   value = wire_ptr_->read();
 //   // auto update errors for registers with error data
-//   if (reg == TSH && ((value&0x80)!=0))
+//   if (reg == TSH_REGISTER_ADDRESS && ((value&0x80)!=0))
 //   {
 //     error_byte_ |= 1<<OVERCURRENT_FLAG_BIT;
 //   }
@@ -828,7 +807,7 @@ bool MPR121::reset(DeviceAddress device_address)
 //   {
 //     error_byte_ &= ~(1<<OVERCURRENT_FLAG_BIT);
 //   }
-//   if ((reg == OORSL || reg == OORSH) && (value!=0))
+//   if ((reg == OORSL_REGISTER_ADDRESS || reg == OORSH_REGISTER_ADDRESS) && (value!=0))
 //   {
 //     error_byte_ |= 1<<OUT_OF_RANGE_BIT;
 //   }
@@ -839,7 +818,8 @@ bool MPR121::reset(DeviceAddress device_address)
 //   return value;
 // }
 
-// void MPR121::applySettings(const Settings & settings)
+// void MPR121::applySettings(DeviceAddress device_address,
+//   const Settings & settings)
 // {
 //   bool was_running = running;
 //   if(was_running)
@@ -848,38 +828,38 @@ bool MPR121::reset(DeviceAddress device_address)
 //   }
 //   // here avoids multiple stop() / run() calls
 
-//   writeRegister(MHDR,settings->MHDR);
-//   writeRegister(NHDR,settings->NHDR);
-//   writeRegister(NCLR,settings->NCLR);
-//   writeRegister(FDLR,settings->FDLR);
-//   writeRegister(MHDF,settings->MHDF);
-//   writeRegister(NHDF,settings->NHDF);
-//   writeRegister(NCLF,settings->NCLF);
-//   writeRegister(FDLF,settings->FDLF);
-//   writeRegister(NHDT,settings->NHDT);
-//   writeRegister(NCLT,settings->NCLT);
-//   writeRegister(FDLT,settings->FDLT);
-//   writeRegister(MHDPROXR,settings->MHDPROXR);
-//   writeRegister(NHDPROXR,settings->NHDPROXR);
-//   writeRegister(NCLPROXR,settings->NCLPROXR);
-//   writeRegister(FDLPROXR,settings->FDLPROXR);
-//   writeRegister(MHDPROXF,settings->MHDPROXF);
-//   writeRegister(NHDPROXF,settings->NHDPROXF);
-//   writeRegister(NCLPROXF,settings->NCLPROXF);
-//   writeRegister(FDLPROXF,settings->FDLPROXF);
-//   writeRegister(NHDPROXT,settings->NHDPROXT);
-//   writeRegister(NCLPROXT,settings->NCLPROXT);
-//   writeRegister(FDLPROXT,settings->FDLPROXT);
-//   writeRegister(DTR, settings->DTR);
-//   writeRegister(AFE1, settings->AFE1);
-//   writeRegister(AFE2, settings->AFE2);
-//   writeRegister(ACCR0, settings->ACCR0);
-//   writeRegister(ACCR1, settings->ACCR1);
-//   writeRegister(USL, settings->USL);
-//   writeRegister(LSL, settings->LSL);
-//   writeRegister(TL, settings->TL);
+//   write(device_address,MHDR_REGISTER_ADDRESS,settings->MHDR);
+//   write(device_address,NHDR_REGISTER_ADDRESS,settings->NHDR);
+//   write(device_address,NCLR_REGISTER_ADDRESS,settings->NCLR);
+//   write(device_address,FDLR_REGISTER_ADDRESS,settings->FDLR);
+//   write(device_address,MHDF_REGISTER_ADDRESS,settings->MHDF);
+//   write(device_address,NHDF_REGISTER_ADDRESS,settings->NHDF);
+//   write(device_address,NCLF_REGISTER_ADDRESS,settings->NCLF);
+//   write(device_address,FDLF_REGISTER_ADDRESS,settings->FDLF);
+//   write(device_address,NHDT_REGISTER_ADDRESS,settings->NHDT);
+//   write(device_address,NCLT_REGISTER_ADDRESS,settings->NCLT);
+//   write(device_address,FDLT_REGISTER_ADDRESS,settings->FDLT);
+//   write(device_address,MHDPROXR_REGISTER_ADDRESS,settings->MHDPROXR);
+//   write(device_address,NHDPROXR_REGISTER_ADDRESS,settings->NHDPROXR);
+//   write(device_address,NCLPROXR_REGISTER_ADDRESS,settings->NCLPROXR);
+//   write(device_address,FDLPROXR_REGISTER_ADDRESS,settings->FDLPROXR);
+//   write(device_address,MHDPROXF_REGISTER_ADDRESS,settings->MHDPROXF);
+//   write(device_address,NHDPROXF_REGISTER_ADDRESS,settings->NHDPROXF);
+//   write(device_address,NCLPROXF_REGISTER_ADDRESS,settings->NCLPROXF);
+//   write(device_address,FDLPROXF_REGISTER_ADDRESS,settings->FDLPROXF);
+//   write(device_address,NHDPROXT_REGISTER_ADDRESS,settings->NHDPROXT);
+//   write(device_address,NCLPROXT_REGISTER_ADDRESS,settings->NCLPROXT);
+//   write(device_address,FDLPROXT_REGISTER_ADDRESS,settings->FDLPROXT);
+//   write(device_address,DTR_REGISTER_ADDRESS,settings->DTR);
+//   write(device_address,AFE1_REGISTER_ADDRESS,settings->AFE1);
+//   write(device_address,AFE2_REGISTER_ADDRESS,settings->AFE2);
+//   write(device_address,ACCR0_REGISTER_ADDRESS,settings->ACCR0);
+//   write(device_address,ACCR1_REGISTER_ADDRESS,settings->ACCR1);
+//   write(device_address,USL_REGISTER_ADDRESS,settings->USL);
+//   write(device_address,LSL_REGISTER_ADDRESS,settings->LSL);
+//   write(device_address,TL_REGISTER_ADDRESS,settings->TL);
 
-//   writeRegister(ECR, settings->ECR);
+//   write(device_address,ECR_REGISTER_ADDRESS,settings->ECR);
 
 //   error_byte_ &= ~(1<<NOT_INITIALIZED_BIT); // clear not inited error as we have just inited!
 //   setTouchThreshold(settings->TTHRESH);

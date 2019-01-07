@@ -13,8 +13,6 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#include <Streaming.h>
-
 
 class MPR121
 {
@@ -30,7 +28,7 @@ public:
     };
 
   // Convenience method when using a single device
-  void setupSingleDevice(TwoWire & wire=Wire,
+  bool setupSingleDevice(TwoWire & wire=Wire,
     DeviceAddress device_address=ADDRESS_5A,
     bool fast_mode=false);
 
@@ -40,7 +38,12 @@ public:
     bool fast_mode=false);
 
   void addDevice(DeviceAddress device_address);
-  void resetAllDevices();
+  bool resetAllDevices();
+
+  void enableDeviceChannels(DeviceAddress device_address,
+    uint8_t number_of_channels_enabled);
+  void stop(DeviceAddress device_address);
+  bool isRunning(DeviceAddress device_address);
 
   // // getError() returns an Error indicating the current
   // // error on the MPR121 - clearError() clears this
@@ -102,23 +105,6 @@ public:
   // uint8_t getReleaseThreshold(const uint8_t electrode);
 
   // // ------------------ ADVANCED FUNCTIONS ------------------
-
-  // // I2C speed control functions - goFast() sets the SCL clock
-  // // to 400kHz - goSlow() sets the SCL clock to 100kHz. Defaults
-  // // to 100kHz and affects all devices on the I2C bus. Included
-  // // for speed freaks only.
-  // void goSlow();
-  // void goFast();
-
-  // // stop() and run() take the MPR121 in and out of stop mode
-  // // which reduces current consumption to 3uA
-  // void run();
-  // void stop();
-
-  // // tells us if we are in run mode, and if we have inited the
-  // // MPR121
-  // bool isRunning();
-  // bool isInitialized();
 
   // // set number of electrodes to use to generate virtual "13th"
   // // proximity electrode
@@ -238,168 +224,174 @@ private:
 
   // // registers
   // // touch and OOR statuses
-  // const static uint8_t TSL = 0x00;
-  // const static uint8_t TSH = 0x01;
-  // const static uint8_t OORSL = 0x02;
-  // const static uint8_t OORSH = 0x03;
+  // const static uint8_t TSL_REGISTER_ADDRESS = 0x00;
+  // const static uint8_t TSH_REGISTER_ADDRESS = 0x01;
+  // const static uint8_t OORSL_REGISTER_ADDRESS = 0x02;
+  // const static uint8_t OORSH_REGISTER_ADDRESS = 0x03;
 
   // // filtered data
-  // const static uint8_t E0FDL = 0x04;
-  // const static uint8_t E0FDH = 0x05;
-  // const static uint8_t E1FDL = 0x06;
-  // const static uint8_t E1FDH = 0x07;
-  // const static uint8_t E2FDL = 0x08;
-  // const static uint8_t E2FDH = 0x09;
-  // const static uint8_t E3FDL = 0x0A;
-  // const static uint8_t E3FDH = 0x0B;
-  // const static uint8_t E4FDL = 0x0C;
-  // const static uint8_t E4FDH = 0x0D;
-  // const static uint8_t E5FDL = 0x0E;
-  // const static uint8_t E5FDH = 0x0F;
-  // const static uint8_t E6FDL = 0x10;
-  // const static uint8_t E6FDH = 0x11;
-  // const static uint8_t E7FDL = 0x12;
-  // const static uint8_t E7FDH = 0x13;
-  // const static uint8_t E8FDL = 0x14;
-  // const static uint8_t E8FDH = 0x15;
-  // const static uint8_t E9FDL = 0x16;
-  // const static uint8_t E9FDH = 0x17;
-  // const static uint8_t E10FDL = 0x18;
-  // const static uint8_t E10FDH = 0x19;
-  // const static uint8_t E11FDL = 0x1A;
-  // const static uint8_t E11FDH = 0x1B;
-  // const static uint8_t E12FDL = 0x1C;
-  // const static uint8_t E12FDH = 0x1D;
+  // const static uint8_t E0FDL_REGISTER_ADDRESS = 0x04;
+  // const static uint8_t E0FDH_REGISTER_ADDRESS = 0x05;
+  // const static uint8_t E1FDL_REGISTER_ADDRESS = 0x06;
+  // const static uint8_t E1FDH_REGISTER_ADDRESS = 0x07;
+  // const static uint8_t E2FDL_REGISTER_ADDRESS = 0x08;
+  // const static uint8_t E2FDH_REGISTER_ADDRESS = 0x09;
+  // const static uint8_t E3FDL_REGISTER_ADDRESS = 0x0A;
+  // const static uint8_t E3FDH_REGISTER_ADDRESS = 0x0B;
+  // const static uint8_t E4FDL_REGISTER_ADDRESS = 0x0C;
+  // const static uint8_t E4FDH_REGISTER_ADDRESS = 0x0D;
+  // const static uint8_t E5FDL_REGISTER_ADDRESS = 0x0E;
+  // const static uint8_t E5FDH_REGISTER_ADDRESS = 0x0F;
+  // const static uint8_t E6FDL_REGISTER_ADDRESS = 0x10;
+  // const static uint8_t E6FDH_REGISTER_ADDRESS = 0x11;
+  // const static uint8_t E7FDL_REGISTER_ADDRESS = 0x12;
+  // const static uint8_t E7FDH_REGISTER_ADDRESS = 0x13;
+  // const static uint8_t E8FDL_REGISTER_ADDRESS = 0x14;
+  // const static uint8_t E8FDH_REGISTER_ADDRESS = 0x15;
+  // const static uint8_t E9FDL_REGISTER_ADDRESS = 0x16;
+  // const static uint8_t E9FDH_REGISTER_ADDRESS = 0x17;
+  // const static uint8_t E10FDL_REGISTER_ADDRESS = 0x18;
+  // const static uint8_t E10FDH_REGISTER_ADDRESS = 0x19;
+  // const static uint8_t E11FDL_REGISTER_ADDRESS = 0x1A;
+  // const static uint8_t E11FDH_REGISTER_ADDRESS = 0x1B;
+  // const static uint8_t E12FDL_REGISTER_ADDRESS = 0x1C;
+  // const static uint8_t E12FDH_REGISTER_ADDRESS = 0x1D;
 
   // // baseline values
-  // const static uint8_t E0BV = 0x1E;
-  // const static uint8_t E1BV = 0x1F;
-  // const static uint8_t E2BV = 0x20;
-  // const static uint8_t E3BV = 0x21;
-  // const static uint8_t E4BV = 0x22;
-  // const static uint8_t E5BV = 0x23;
-  // const static uint8_t E6BV = 0x24;
-  // const static uint8_t E7BV = 0x25;
-  // const static uint8_t E8BV = 0x26;
-  // const static uint8_t E9BV = 0x27;
-  // const static uint8_t E10BV = 0x28;
-  // const static uint8_t E11BV = 0x29;
-  // const static uint8_t E12BV = 0x2A;
+  // const static uint8_t E0BV_REGISTER_ADDRESS = 0x1E;
+  // const static uint8_t E1BV_REGISTER_ADDRESS = 0x1F;
+  // const static uint8_t E2BV_REGISTER_ADDRESS = 0x20;
+  // const static uint8_t E3BV_REGISTER_ADDRESS = 0x21;
+  // const static uint8_t E4BV_REGISTER_ADDRESS = 0x22;
+  // const static uint8_t E5BV_REGISTER_ADDRESS = 0x23;
+  // const static uint8_t E6BV_REGISTER_ADDRESS = 0x24;
+  // const static uint8_t E7BV_REGISTER_ADDRESS = 0x25;
+  // const static uint8_t E8BV_REGISTER_ADDRESS = 0x26;
+  // const static uint8_t E9BV_REGISTER_ADDRESS = 0x27;
+  // const static uint8_t E10BV_REGISTER_ADDRESS = 0x28;
+  // const static uint8_t E11BV_REGISTER_ADDRESS = 0x29;
+  // const static uint8_t E12BV_REGISTER_ADDRESS = 0x2A;
 
   // // general electrode touch sense baseline filters
   // // rising filter
-  // const static uint8_t MHDR = 0x2B;
-  // const static uint8_t NHDR = 0x2C;
-  // const static uint8_t NCLR = 0x2D;
-  // const static uint8_t FDLR = 0x2E;
+  // const static uint8_t MHDR_REGISTER_ADDRESS = 0x2B;
+  // const static uint8_t NHDR_REGISTER_ADDRESS = 0x2C;
+  // const static uint8_t NCLR_REGISTER_ADDRESS = 0x2D;
+  // const static uint8_t FDLR_REGISTER_ADDRESS = 0x2E;
 
   // // falling filter
-  // const static uint8_t MHDF = 0x2F;
-  // const static uint8_t NHDF = 0x30;
-  // const static uint8_t NCLF = 0x31;
-  // const static uint8_t FDLF = 0x32;
+  // const static uint8_t MHDF_REGISTER_ADDRESS = 0x2F;
+  // const static uint8_t NHDF_REGISTER_ADDRESS = 0x30;
+  // const static uint8_t NCLF_REGISTER_ADDRESS = 0x31;
+  // const static uint8_t FDLF_REGISTER_ADDRESS = 0x32;
 
   // // touched filter
-  // const static uint8_t NHDT = 0x33;
-  // const static uint8_t NCLT = 0x34;
-  // const static uint8_t FDLT = 0x35;
+  // const static uint8_t NHDT_REGISTER_ADDRESS = 0x33;
+  // const static uint8_t NCLT_REGISTER_ADDRESS = 0x34;
+  // const static uint8_t FDLT_REGISTER_ADDRESS = 0x35;
 
   // // proximity electrode touch sense baseline filters
   // // rising filter
-  // const static uint8_t MHDPROXR = 0x36;
-  // const static uint8_t NHDPROXR = 0x37;
-  // const static uint8_t NCLPROXR = 0x38;
-  // const static uint8_t FDLPROXR = 0x39;
+  // const static uint8_t MHDPROXR_REGISTER_ADDRESS = 0x36;
+  // const static uint8_t NHDPROXR_REGISTER_ADDRESS = 0x37;
+  // const static uint8_t NCLPROXR_REGISTER_ADDRESS = 0x38;
+  // const static uint8_t FDLPROXR_REGISTER_ADDRESS = 0x39;
 
   // // falling filter
-  // const static uint8_t MHDPROXF = 0x3A;
-  // const static uint8_t NHDPROXF = 0x3B;
-  // const static uint8_t NCLPROXF = 0x3C;
-  // const static uint8_t FDLPROXF = 0x3D;
+  // const static uint8_t MHDPROXF_REGISTER_ADDRESS = 0x3A;
+  // const static uint8_t NHDPROXF_REGISTER_ADDRESS = 0x3B;
+  // const static uint8_t NCLPROXF_REGISTER_ADDRESS = 0x3C;
+  // const static uint8_t FDLPROXF_REGISTER_ADDRESS = 0x3D;
 
   // // touched filter
-  // const static uint8_t NHDPROXT = 0x3E;
-  // const static uint8_t NCLPROXT = 0x3F;
-  // const static uint8_t FDLPROXT = 0x40;
+  // const static uint8_t NHDPROXT_REGISTER_ADDRESS = 0x3E;
+  // const static uint8_t NCLPROXT_REGISTER_ADDRESS = 0x3F;
+  // const static uint8_t FDLPROXT_REGISTER_ADDRESS = 0x40;
 
   // // electrode touch and release thresholds
-  // const static uint8_t E0TTH = 0x41;
-  // const static uint8_t E0RTH = 0x42;
-  // const static uint8_t E1TTH = 0x43;
-  // const static uint8_t E1RTH = 0x44;
-  // const static uint8_t E2TTH = 0x45;
-  // const static uint8_t E2RTH = 0x46;
-  // const static uint8_t E3TTH = 0x47;
-  // const static uint8_t E3RTH = 0x48;
-  // const static uint8_t E4TTH = 0x49;
-  // const static uint8_t E4RTH = 0x4A;
-  // const static uint8_t E5TTH = 0x4B;
-  // const static uint8_t E5RTH = 0x4C;
-  // const static uint8_t E6TTH = 0x4D;
-  // const static uint8_t E6RTH = 0x4E;
-  // const static uint8_t E7TTH = 0x4F;
-  // const static uint8_t E7RTH = 0x50;
-  // const static uint8_t E8TTH = 0x51;
-  // const static uint8_t E8RTH = 0x52;
-  // const static uint8_t E9TTH = 0x53;
-  // const static uint8_t E9RTH = 0x54;
-  // const static uint8_t E10TTH = 0x55;
-  // const static uint8_t E10RTH = 0x56;
-  // const static uint8_t E11TTH = 0x57;
-  // const static uint8_t E11RTH = 0x58;
-  // const static uint8_t E12TTH = 0x59;
-  // const static uint8_t E12RTH = 0x5A;
+  // const static uint8_t E0TTH_REGISTER_ADDRESS = 0x41;
+  // const static uint8_t E0RTH_REGISTER_ADDRESS = 0x42;
+  // const static uint8_t E1TTH_REGISTER_ADDRESS = 0x43;
+  // const static uint8_t E1RTH_REGISTER_ADDRESS = 0x44;
+  // const static uint8_t E2TTH_REGISTER_ADDRESS = 0x45;
+  // const static uint8_t E2RTH_REGISTER_ADDRESS = 0x46;
+  // const static uint8_t E3TTH_REGISTER_ADDRESS = 0x47;
+  // const static uint8_t E3RTH_REGISTER_ADDRESS = 0x48;
+  // const static uint8_t E4TTH_REGISTER_ADDRESS = 0x49;
+  // const static uint8_t E4RTH_REGISTER_ADDRESS = 0x4A;
+  // const static uint8_t E5TTH_REGISTER_ADDRESS = 0x4B;
+  // const static uint8_t E5RTH_REGISTER_ADDRESS = 0x4C;
+  // const static uint8_t E6TTH_REGISTER_ADDRESS = 0x4D;
+  // const static uint8_t E6RTH_REGISTER_ADDRESS = 0x4E;
+  // const static uint8_t E7TTH_REGISTER_ADDRESS = 0x4F;
+  // const static uint8_t E7RTH_REGISTER_ADDRESS = 0x50;
+  // const static uint8_t E8TTH_REGISTER_ADDRESS = 0x51;
+  // const static uint8_t E8RTH_REGISTER_ADDRESS = 0x52;
+  // const static uint8_t E9TTH_REGISTER_ADDRESS = 0x53;
+  // const static uint8_t E9RTH_REGISTER_ADDRESS = 0x54;
+  // const static uint8_t E10TTH_REGISTER_ADDRESS = 0x55;
+  // const static uint8_t E10RTH_REGISTER_ADDRESS = 0x56;
+  // const static uint8_t E11TTH_REGISTER_ADDRESS = 0x57;
+  // const static uint8_t E11RTH_REGISTER_ADDRESS = 0x58;
+  // const static uint8_t E12TTH_REGISTER_ADDRESS = 0x59;
+  // const static uint8_t E12RTH_REGISTER_ADDRESS = 0x5A;
 
   // // debounce settings
-  // const static uint8_t DTR = 0x5B;
+  // const static uint8_t DTR_REGISTER_ADDRESS = 0x5B;
 
   // // configuration registers
   const static uint8_t CDC_REGISTER_ADDRESS = 0x5C;
   const static uint8_t CDC_REGISTER_DEFAULT = 0x10;
   const static uint8_t CDT_REGISTER_ADDRESS = 0x5D;
   const static uint8_t CDT_REGISTER_DEFAULT = 0x24;
-  // const static uint8_t ECR = 0x5E;
+  const static uint8_t ECR_REGISTER_ADDRESS = 0x5E;
+  struct ElectrodeConfiguration
+  {
+    uint8_t electrode_enable : 4;
+    uint8_t proximity_enable : 2;
+    uint8_t calibration_lock : 2;
+  };
 
   // // electrode currents
-  // const static uint8_t CDC0 = 0x5F;
-  // const static uint8_t CDC1 = 0x60;
-  // const static uint8_t CDC2 = 0x61;
-  // const static uint8_t CDC3 = 0x62;
-  // const static uint8_t CDC4 = 0x63;
-  // const static uint8_t CDC5 = 0x64;
-  // const static uint8_t CDC6 = 0x65;
-  // const static uint8_t CDC7 = 0x66;
-  // const static uint8_t CDC8 = 0x67;
-  // const static uint8_t CDC9 = 0x68;
-  // const static uint8_t CDC10 = 0x69;
-  // const static uint8_t CDC11 = 0x6A;
-  // const static uint8_t CDCPROX = 0x6B;
+  // const static uint8_t CDC0_REGISTER_ADDRESS = 0x5F;
+  // const static uint8_t CDC1_REGISTER_ADDRESS = 0x60;
+  // const static uint8_t CDC2_REGISTER_ADDRESS = 0x61;
+  // const static uint8_t CDC3_REGISTER_ADDRESS = 0x62;
+  // const static uint8_t CDC4_REGISTER_ADDRESS = 0x63;
+  // const static uint8_t CDC5_REGISTER_ADDRESS = 0x64;
+  // const static uint8_t CDC6_REGISTER_ADDRESS = 0x65;
+  // const static uint8_t CDC7_REGISTER_ADDRESS = 0x66;
+  // const static uint8_t CDC8_REGISTER_ADDRESS = 0x67;
+  // const static uint8_t CDC9_REGISTER_ADDRESS = 0x68;
+  // const static uint8_t CDC10_REGISTER_ADDRESS = 0x69;
+  // const static uint8_t CDC11_REGISTER_ADDRESS = 0x6A;
+  // const static uint8_t CDCPROX_REGISTER_ADDRESS = 0x6B;
 
   // // electrode charge times
-  // const static uint8_t CDT01 = 0x6C;
-  // const static uint8_t CDT23 = 0x6D;
-  // const static uint8_t CDT45 = 0x6E;
-  // const static uint8_t CDT67 = 0x6F;
-  // const static uint8_t CDT89 = 0x70;
-  // const static uint8_t CDT1011 = 0x71;
-  // const static uint8_t CDTPROX = 0x72;
+  // const static uint8_t CDT01_REGISTER_ADDRESS = 0x6C;
+  // const static uint8_t CDT23_REGISTER_ADDRESS = 0x6D;
+  // const static uint8_t CDT45_REGISTER_ADDRESS = 0x6E;
+  // const static uint8_t CDT67_REGISTER_ADDRESS = 0x6F;
+  // const static uint8_t CDT89_REGISTER_ADDRESS = 0x70;
+  // const static uint8_t CDT1011_REGISTER_ADDRESS = 0x71;
+  // const static uint8_t CDTPROX_REGISTER_ADDRESS = 0x72;
 
   // // GPIO
-  // const static uint8_t CTL0 = 0x73;
-  // const static uint8_t CTL1 = 0x74;
-  // const static uint8_t DAT = 0x75;
-  // const static uint8_t DIR = 0x76;
-  // const static uint8_t EN = 0x77;
-  // const static uint8_t SET = 0x78;
-  // const static uint8_t CLR = 0x79;
-  // const static uint8_t TOG = 0x7A;
+  // const static uint8_t CTL0_REGISTER_ADDRESS = 0x73;
+  // const static uint8_t CTL1_REGISTER_ADDRESS = 0x74;
+  // const static uint8_t DAT_REGISTER_ADDRESS = 0x75;
+  // const static uint8_t DIR_REGISTER_ADDRESS = 0x76;
+  // const static uint8_t EN_REGISTER_ADDRESS = 0x77;
+  // const static uint8_t SET_REGISTER_ADDRESS = 0x78;
+  // const static uint8_t CLR_REGISTER_ADDRESS = 0x79;
+  // const static uint8_t TOG_REGISTER_ADDRESS = 0x7A;
 
   // // auto-config
-  // const static uint8_t ACCR0 = 0x7B;
-  // const static uint8_t ACCR1 = 0x7C;
-  // const static uint8_t USL = 0x7D;
-  // const static uint8_t LSL = 0x7E;
-  // const static uint8_t TL = 0x7F;
+  // const static uint8_t ACCR0_REGISTER_ADDRESS = 0x7B;
+  // const static uint8_t ACCR1_REGISTER_ADDRESS = 0x7C;
+  // const static uint8_t USL_REGISTER_ADDRESS = 0x7D;
+  // const static uint8_t LSL_REGISTER_ADDRESS = 0x7E;
+  // const static uint8_t TL_REGISTER_ADDRESS = 0x7F;
 
   // soft reset
   const static uint8_t SRST_REGISTER_ADDRESS = 0x80;
@@ -528,7 +520,8 @@ private:
 
   // // applies a complete array of settings from a
   // // Settings variable useful if you want to do a bulk setup of the device
-  // void applySettings(const Settings & settings);
+  // void applySettings(DeviceAddress device_address,
+  //   const Settings & settings);
 
   // bool previouslyTouched(const uint8_t electrode);
 
