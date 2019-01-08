@@ -12,6 +12,7 @@ void setup()
   Serial.begin(constants::baud);
 
   mpr121.setupSingleDevice(Wire,constants::device_address);
+  mpr121.enableChannels(constants::channel_count);
 
   // if(!mpr121.begin(ADDRESS))
   // {
@@ -56,13 +57,12 @@ void setup()
   //   }
   // }
 
-  // mpr121.setTouchThreshold(TOUCH_THRESHOLD);
-  // mpr121.setReleaseThreshold(RELEASE_THRESHOLD);
+  mpr121.setTouchThreshold(constants::touch_threshold);
+  mpr121.setReleaseThreshold(constants::release_threshold);
 }
 
 void loop()
 {
-  mpr121.resetAllDevices();
   delay(constants::loop_delay);
   // int i;
 

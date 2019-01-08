@@ -13,8 +13,6 @@
 MPR121::MPR121()
 {
   device_count_ = 0;
-  // wire_ptr_ = &Wire;
-  // address_ = 0x5A;
   // ecr_backup_ = 0x00;
   // error_byte_ = 1<<NOT_INITIALIZED_BIT; // initially, we're not initialised
   // running_ = false;
@@ -30,7 +28,28 @@ bool MPR121::setupSingleDevice(TwoWire & wire,
   setWire(Wire,fast_mode);
   addDevice(device_address);
   bool successfully_reset = resetAllDevices();
-  return succcessfully_reset;
+  return successfully_reset;
+}
+
+void MPR121::enableChannels(uint8_t number_of_channels_enabled)
+{
+  enableChannelsAllDevices(number_of_channels_enabled);
+}
+
+void MPR121::enableAllChannels()
+{
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
+  {
+    enableAllChannels(device_addresses_[device_index]);
+  }
+}
+
+void MPR121::disableAllChannels()
+{
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
+  {
+    disableAllChannels(device_addresses_[device_index]);
+  }
 }
 
 void MPR121::setWire(TwoWire & wire,
@@ -66,6 +85,51 @@ bool MPR121::resetAllDevices()
   return all_successfully_reset;
 }
 
+void MPR121::enableChannels(DeviceAddress device_address,
+  uint8_t number_of_channels_enabled)
+{
+  // if (!isInitialized())
+  // {
+  //   return;
+  // }
+  ElectrodeConfiguration electrode_configuration;
+  read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+  electrode_configuration.fields.electrode_enable = number_of_channels_enabled;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+}
+
+void MPR121::enableChannelsAllDevices(uint8_t number_of_channels_enabled)
+{
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
+  {
+    enableChannels(device_addresses_[device_index],number_of_channels_enabled);
+  }
+}
+
+void MPR121::enableAllChannels(DeviceAddress device_address)
+{
+  // if (!isInitialized())
+  // {
+  //   return;
+  // }
+  ElectrodeConfiguration electrode_configuration;
+  read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+  electrode_configuration.fields.electrode_enable = CHANNEL_COUNT_MAX_PER_DEVICE;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+}
+
+void MPR121::disableAllChannels(DeviceAddress device_address)
+{
+  // if (!isInitialized())
+  // {
+  //   return;
+  // }
+  ElectrodeConfiguration electrode_configuration;
+  read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+  electrode_configuration.fields.electrode_enable = 0;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+}
+
 // private
 
 int MPR121::deviceAddressToDeviceIndex(DeviceAddress device_address)
@@ -93,14 +157,14 @@ bool MPR121::reset(DeviceAddress device_address)
 
   if (register_data == CDT_REGISTER_DEFAULT)
   {
+    applySettings(device_address,default_settings_);
     return SUCCESS;
   }
   else
   {
     return !SUCCESS;
   }
-
-  // if (readRegister(AFE2)!=0x24)
+  // if (readRegister(CDT)!=0x24)
   // {
   //   error_byte_ |= 1<<READBACK_FAIL_BIT;
   // }
@@ -128,30 +192,20 @@ bool MPR121::reset(DeviceAddress device_address)
   // }
 }
 
-void MPR121::enableDeviceChannels(DeviceAddress device_address,
-  uint8_t number_of_channels_enabled)
-{
-  // if (!isInitialized())
-  // {
-  //   return;
-  // }
-  write(device_address,ECR_REGISTER_ADDRESS,ecr_backup_); // restore backup to return to run mode
-}
+// void MPR121::stop()
+// {
+//   // if(!isInitialized())
+//   // {
+//   //   return;
+//   // }
+//   ecr_backup_ = readRegister(ECR);  // backup ECR to restore when we enter run
+//   writeRegister(ECR, ecr_backup_ & 0xC0); // turn off all electrodes to stop
+// }
 
-void MPR121::stop()
-{
-  // if(!isInitialized())
-  // {
-  //   return;
-  // }
-  ecr_backup_ = readRegister(ECR);  // backup ECR to restore when we enter run
-  writeRegister(ECR, ecr_backup_ & 0xC0); // turn off all electrodes to stop
-}
-
-bool MPR121::isRunning()
-{
-  return running_;
-}
+// bool MPR121::isRunning()
+// {
+//   return running_;
+// }
 
 // bool MPR121::begin()
 // {
@@ -315,7 +369,7 @@ bool MPR121::isRunning()
 //   return any_touched_flag_;
 // }
 
-// bool MPR121::touched(const uint8_t electrode)
+// bool MPR121::touched(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {
@@ -343,7 +397,7 @@ bool MPR121::isRunning()
 //   return touch_count;
 // }
 
-// int MPR121::getBaselineData(const uint8_t electrode)
+// int MPR121::getBaselineData(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {
@@ -353,7 +407,7 @@ bool MPR121::isRunning()
 //   return baseline_data_[electrode];
 // }
 
-// int MPR121::getFilteredData(const uint8_t electrode)
+// int MPR121::getFilteredData(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {
@@ -363,7 +417,7 @@ bool MPR121::isRunning()
 //   return filtered_data_[electrode];
 // }
 
-// bool MPR121::isNewTouch(const uint8_t electrode)
+// bool MPR121::isNewTouch(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {
@@ -372,7 +426,7 @@ bool MPR121::isRunning()
 //   return ((previouslyTouched(electrode) == false) && (touched(electrode) == true));
 // }
 
-// bool MPR121::isNewRelease(const uint8_t electrode)
+// bool MPR121::isNewRelease(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {
@@ -381,7 +435,7 @@ bool MPR121::isRunning()
 //   return ((previouslyTouched(electrode) == true) && (touched(electrode) == false));
 // }
 
-// void MPR121::setTouchThreshold(const uint8_t threshold)
+// void MPR121::setTouchThreshold(uint8_t threshold)
 // {
 //   if (!isInitialized())
 //   {
@@ -408,16 +462,17 @@ bool MPR121::isRunning()
 //   }
 // }
 
-// void MPR121::setTouchThreshold(const uint8_t electrode, const uint8_t threshold)
-// {
-//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
-//   {
-//     return; // avoid out of bounds behaviour
-//   }
+void MPR121::setTouchThreshold(uint8_t channel,
+  uint8_t threshold)
+{
+  if ((channel >= CHANNEL_COUNT) || !isInitialized())
+  {
+    return; // avoid out of bounds behaviour
+  }
 
-//   // this relies on the internal register map of the MPR121
-//   writeRegister(E0TTH + (electrode<<1), threshold);
-// }
+  // this relies on the internal register map of the MPR121
+  writeRegister(E0TTH + (channel<<1), threshold);
+}
 
 // void MPR121::setReleaseThreshold(uint8_t threshold)
 // {
@@ -530,7 +585,7 @@ bool MPR121::isRunning()
 //   }
 // }
 
-// void MPR121::setDigitalPinCount(const uint8_t pin_count)
+// void MPR121::setDigitalPinCount(uint8_t pin_count)
 // {
 //   if(!isInitialized()) return;
 //   bool was_running = running;
@@ -552,7 +607,7 @@ bool MPR121::isRunning()
 
 // }
 
-// void MPR121::pinMode(const uint8_t electrode, const PinMode mode)
+// void MPR121::pinMode(uint8_t electrode, const PinMode mode)
 // {
 
 //   // only valid for ELE4..ELE11
@@ -733,11 +788,11 @@ bool MPR121::isRunning()
 // {
 //   uint8_t scratch;
 
-//   scratch = readRegister(AFE2);
-//   writeRegister(AFE2, (scratch & 0xF8) | (period & 0x07));
+//   scratch = readRegister(CDT);
+//   writeRegister(CDT, (scratch & 0xF8) | (period & 0x07));
 // }
 
-// void MPR121::writeRegister(const uint8_t reg, const uint8_t value)
+// void MPR121::writeRegister(uint8_t reg, uint8_t value)
 // {
 
 //   bool was_running = false;;
@@ -781,7 +836,7 @@ bool MPR121::isRunning()
 //   }
 // }
 
-// uint8_t MPR121::readRegister(const uint8_t reg)
+// uint8_t MPR121::readRegister(uint8_t reg)
 // {
 //   uint8_t value;
 
@@ -818,61 +873,50 @@ bool MPR121::isRunning()
 //   return value;
 // }
 
-// void MPR121::applySettings(DeviceAddress device_address,
-//   const Settings & settings)
-// {
-//   bool was_running = running;
-//   if(was_running)
-//   {
-//     stop();  // can't change most regs when running - checking
-//   }
-//   // here avoids multiple stop() / run() calls
+void MPR121::applySettings(DeviceAddress device_address,
+  const Settings & settings)
+{
+  disableAllChannels(device_address);
 
-//   write(device_address,MHDR_REGISTER_ADDRESS,settings->MHDR);
-//   write(device_address,NHDR_REGISTER_ADDRESS,settings->NHDR);
-//   write(device_address,NCLR_REGISTER_ADDRESS,settings->NCLR);
-//   write(device_address,FDLR_REGISTER_ADDRESS,settings->FDLR);
-//   write(device_address,MHDF_REGISTER_ADDRESS,settings->MHDF);
-//   write(device_address,NHDF_REGISTER_ADDRESS,settings->NHDF);
-//   write(device_address,NCLF_REGISTER_ADDRESS,settings->NCLF);
-//   write(device_address,FDLF_REGISTER_ADDRESS,settings->FDLF);
-//   write(device_address,NHDT_REGISTER_ADDRESS,settings->NHDT);
-//   write(device_address,NCLT_REGISTER_ADDRESS,settings->NCLT);
-//   write(device_address,FDLT_REGISTER_ADDRESS,settings->FDLT);
-//   write(device_address,MHDPROXR_REGISTER_ADDRESS,settings->MHDPROXR);
-//   write(device_address,NHDPROXR_REGISTER_ADDRESS,settings->NHDPROXR);
-//   write(device_address,NCLPROXR_REGISTER_ADDRESS,settings->NCLPROXR);
-//   write(device_address,FDLPROXR_REGISTER_ADDRESS,settings->FDLPROXR);
-//   write(device_address,MHDPROXF_REGISTER_ADDRESS,settings->MHDPROXF);
-//   write(device_address,NHDPROXF_REGISTER_ADDRESS,settings->NHDPROXF);
-//   write(device_address,NCLPROXF_REGISTER_ADDRESS,settings->NCLPROXF);
-//   write(device_address,FDLPROXF_REGISTER_ADDRESS,settings->FDLPROXF);
-//   write(device_address,NHDPROXT_REGISTER_ADDRESS,settings->NHDPROXT);
-//   write(device_address,NCLPROXT_REGISTER_ADDRESS,settings->NCLPROXT);
-//   write(device_address,FDLPROXT_REGISTER_ADDRESS,settings->FDLPROXT);
-//   write(device_address,DTR_REGISTER_ADDRESS,settings->DTR);
-//   write(device_address,AFE1_REGISTER_ADDRESS,settings->AFE1);
-//   write(device_address,AFE2_REGISTER_ADDRESS,settings->AFE2);
-//   write(device_address,ACCR0_REGISTER_ADDRESS,settings->ACCR0);
-//   write(device_address,ACCR1_REGISTER_ADDRESS,settings->ACCR1);
-//   write(device_address,USL_REGISTER_ADDRESS,settings->USL);
-//   write(device_address,LSL_REGISTER_ADDRESS,settings->LSL);
-//   write(device_address,TL_REGISTER_ADDRESS,settings->TL);
+  write(device_address,MHDR_REGISTER_ADDRESS,settings.MHDR);
+  write(device_address,NHDR_REGISTER_ADDRESS,settings.NHDR);
+  write(device_address,NCLR_REGISTER_ADDRESS,settings.NCLR);
+  write(device_address,FDLR_REGISTER_ADDRESS,settings.FDLR);
+  write(device_address,MHDF_REGISTER_ADDRESS,settings.MHDF);
+  write(device_address,NHDF_REGISTER_ADDRESS,settings.NHDF);
+  write(device_address,NCLF_REGISTER_ADDRESS,settings.NCLF);
+  write(device_address,FDLF_REGISTER_ADDRESS,settings.FDLF);
+  write(device_address,NHDT_REGISTER_ADDRESS,settings.NHDT);
+  write(device_address,NCLT_REGISTER_ADDRESS,settings.NCLT);
+  write(device_address,FDLT_REGISTER_ADDRESS,settings.FDLT);
+  write(device_address,MHDPROXR_REGISTER_ADDRESS,settings.MHDPROXR);
+  write(device_address,NHDPROXR_REGISTER_ADDRESS,settings.NHDPROXR);
+  write(device_address,NCLPROXR_REGISTER_ADDRESS,settings.NCLPROXR);
+  write(device_address,FDLPROXR_REGISTER_ADDRESS,settings.FDLPROXR);
+  write(device_address,MHDPROXF_REGISTER_ADDRESS,settings.MHDPROXF);
+  write(device_address,NHDPROXF_REGISTER_ADDRESS,settings.NHDPROXF);
+  write(device_address,NCLPROXF_REGISTER_ADDRESS,settings.NCLPROXF);
+  write(device_address,FDLPROXF_REGISTER_ADDRESS,settings.FDLPROXF);
+  write(device_address,NHDPROXT_REGISTER_ADDRESS,settings.NHDPROXT);
+  write(device_address,NCLPROXT_REGISTER_ADDRESS,settings.NCLPROXT);
+  write(device_address,FDLPROXT_REGISTER_ADDRESS,settings.FDLPROXT);
+  write(device_address,DTR_REGISTER_ADDRESS,settings.DTR);
+  write(device_address,CDC_REGISTER_ADDRESS,settings.CDC);
+  write(device_address,CDT_REGISTER_ADDRESS,settings.CDT);
+  write(device_address,ECR_REGISTER_ADDRESS,settings.ECR);
+  write(device_address,ACCR0_REGISTER_ADDRESS,settings.ACCR0);
+  write(device_address,ACCR1_REGISTER_ADDRESS,settings.ACCR1);
+  write(device_address,USL_REGISTER_ADDRESS,settings.USL);
+  write(device_address,LSL_REGISTER_ADDRESS,settings.LSL);
+  write(device_address,TL_REGISTER_ADDRESS,settings.TL);
 
-//   write(device_address,ECR_REGISTER_ADDRESS,settings->ECR);
+  // error_byte_ &= ~(1<<NOT_INITIALIZED_BIT); // clear not inited error as we have just inited!
+  // setTouchThreshold(settings.touch_threshold);
+  // setReleaseThreshold(settings.release_threshold);
+  // setInterruptPin(settings.INTERRUPT);
+}
 
-//   error_byte_ &= ~(1<<NOT_INITIALIZED_BIT); // clear not inited error as we have just inited!
-//   setTouchThreshold(settings->TTHRESH);
-//   setReleaseThreshold(settings->RTHRESH);
-//   setInterruptPin(settings->INTERRUPT);
-
-//   if(was_running)
-//   {
-//     run();
-//   }
-// }
-
-// bool MPR121::previouslyTouched(const uint8_t electrode)
+// bool MPR121::previouslyTouched(uint8_t electrode)
 // {
 //   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
 //   {

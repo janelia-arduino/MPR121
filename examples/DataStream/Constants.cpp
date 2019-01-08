@@ -15,6 +15,8 @@ const MPR121::DeviceAddress device_address = MPR121::ADDRESS_5A;
 
 const size_t loop_delay = 2000;
 
+const uint8_t channel_count = 1;
+
 // this is the touch threshold - setting it low makes it more like a proximity trigger
 // default value is 40 for touch
 const uint8_t touch_threshold = 40;

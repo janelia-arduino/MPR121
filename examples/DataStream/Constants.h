@@ -18,6 +18,8 @@ extern const MPR121::DeviceAddress device_address;
 
 extern const size_t loop_delay;
 
+extern const uint8_t channel_count;
+
 extern const uint8_t touch_threshold;
 extern const uint8_t release_threshold;
 }
