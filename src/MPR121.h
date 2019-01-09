@@ -35,9 +35,25 @@ public:
     bool fast_mode=false);
 
   // Methods for using a single device or multiple devices
-  void enableChannels(uint8_t number_of_channels_enabled);
-  void enableAllChannels();
-  void disableAllChannels();
+  void startChannels(uint8_t channel_count);
+  void startAllChannels();
+  void stopAllChannels();
+
+  uint8_t getChannelCount();
+
+  // sets touch and release thresholds either for all channels, or
+  // for a specfic channel - higher values = less sensitive and
+  // release threshold must ALWAYS be lower than touch threshold
+  // void setTouchThreshold(uint8_t threshold);
+  void setChannelTouchThreshold(uint8_t channel,
+    uint8_t threshold);
+  // void setReleaseThreshold(uint8_t threshold);
+  void setChannelReleaseThreshold(uint8_t channel,
+    uint8_t threshold);
+
+  // returns the current touch or release threshold for a specified channel
+  // uint8_t getTouchThreshold(uint8_t channel);
+  // uint8_t getReleaseThreshold(uint8_t channel);
 
   // Methods for using multiple devices
   // Take care when using fast_mode with non-MPR121 devices
@@ -47,11 +63,11 @@ public:
   void addDevice(DeviceAddress device_address);
   bool resetAllDevices();
 
-  void enableChannels(DeviceAddress device_address,
-    uint8_t number_of_channels_enabled);
-  void enableChannelsAllDevices(uint8_t number_of_channels_enabled);
-  void enableAllChannels(DeviceAddress device_address);
-  void disableAllChannels(DeviceAddress device_address);
+  void startChannels(DeviceAddress device_address,
+    uint8_t channel_count);
+  void startChannelsAllDevices(uint8_t channel_count);
+  void startAllChannels(DeviceAddress device_address);
+  void stopAllChannels(DeviceAddress device_address);
 
   // void stop(DeviceAddress device_address);
   // bool isRunning(DeviceAddress device_address);
@@ -102,20 +118,6 @@ public:
   // // detected since the last time updateTouchData() was called
   // bool isNewTouch(uint8_t channel);
   // bool isNewRelease(uint8_t channel);
-
-  // sets touch and release thresholds either for all channels, or
-  // for a specfic channel - higher values = less sensitive and
-  // release threshold must ALWAYS be lower than touch threshold
-  // void setTouchThreshold(uint8_t threshold);
-  void setChannelTouchThreshold(uint8_t channel,
-    uint8_t threshold);
-  // void setReleaseThreshold(uint8_t threshold);
-  void setChannelReleaseThreshold(uint8_t channel,
-    uint8_t threshold);
-
-  // returns the current touch or release threshold for a specified channel
-  // uint8_t getTouchThreshold(uint8_t channel);
-  // uint8_t getReleaseThreshold(uint8_t channel);
 
   // // ------------------ ADVANCED FUNCTIONS ------------------
 
@@ -197,7 +199,7 @@ public:
   // void setSamplePeriod(SamplePeriod period);
 
 private:
-  enum {CHANNEL_COUNT_MAX_PER_DEVICE=12};
+  enum {CHANNELS_PER_DEVICE=13};
   enum {DEVICE_COUNT_MAX=4};
   uint8_t device_count_;
   DeviceAddress device_addresses_[DEVICE_COUNT_MAX];
@@ -323,8 +325,8 @@ private:
   const static uint8_t FDLPROXT_REGISTER_ADDRESS = 0x40;
 
   // // electrode touch and release thresholds
-  // const static uint8_t E0TTH_REGISTER_ADDRESS = 0x41;
-  // const static uint8_t E0RTH_REGISTER_ADDRESS = 0x42;
+  const static uint8_t E0TTH_REGISTER_ADDRESS = 0x41;
+  const static uint8_t E0RTH_REGISTER_ADDRESS = 0x42;
   // const static uint8_t E1TTH_REGISTER_ADDRESS = 0x43;
   // const static uint8_t E1RTH_REGISTER_ADDRESS = 0x44;
   // const static uint8_t E2TTH_REGISTER_ADDRESS = 0x45;
@@ -534,6 +536,9 @@ private:
   // // restarting the MPR121 if necessary
   // void writeRegister(uint8_t reg, uint8_t value);
   // uint8_t readRegister(uint8_t reg);
+
+  uint8_t channelToDeviceIndex(uint8_t channel);
+  uint8_t channelToDeviceChannel(uint8_t channel);
 
   // applies a complete array of settings from a
   // Settings variable useful if you want to do a bulk setup of the device

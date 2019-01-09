@@ -31,26 +31,126 @@ bool MPR121::setupSingleDevice(TwoWire & wire,
   return successfully_reset;
 }
 
-void MPR121::enableChannels(uint8_t number_of_channels_enabled)
+void MPR121::startChannels(uint8_t channel_count)
 {
-  enableChannelsAllDevices(number_of_channels_enabled);
+  startChannelsAllDevices(channel_count);
 }
 
-void MPR121::enableAllChannels()
+void MPR121::startAllChannels()
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    enableAllChannels(device_addresses_[device_index]);
+    startAllChannels(device_addresses_[device_index]);
   }
 }
 
-void MPR121::disableAllChannels()
+void MPR121::stopAllChannels()
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    disableAllChannels(device_addresses_[device_index]);
+    stopAllChannels(device_addresses_[device_index]);
   }
 }
+
+uint8_t MPR121::getChannelCount()
+{
+  return CHANNELS_PER_DEVICE * device_count_;
+}
+
+void MPR121::setChannelTouchThreshold(uint8_t channel,
+  uint8_t threshold)
+{
+  // if ((channel >= CHANNEL_COUNT) || !isInitialized())
+  if (channel >= getChannelCount())
+  {
+    return;
+  }
+  uint8_t device_index = channelToDeviceIndex(channel);
+  uint8_t device_channel = channelToDeviceChannel(channel);
+  uint8_t register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
+  write(device_addresses_[device_index],register_address,threshold);
+}
+
+// void MPR121::setTouchThreshold(uint8_t threshold)
+// {
+//   if (!isInitialized())
+//   {
+//     return;
+//   }
+
+//   bool was_running = running_;
+
+//   if (was_running)
+//   {
+//     stop();  // can only change thresholds when not running
+//   }
+//   // checking here avoids multiple stop() / run()
+//   // calls
+
+//   for (size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
+//   {
+//     setTouchThreshold(electrode, threshold);
+//   }
+
+//   if (was_running)
+//   {
+//     run();
+//   }
+// }
+
+// void MPR121::setReleaseThreshold(uint8_t threshold)
+// {
+//   if (!isInitialized())
+//   {
+//     return;
+//   }
+
+//   bool was_running = running;
+
+//   if(was_running)
+//   {
+//     stop();  // can only change thresholds when not running
+//   }
+//   // checking here avoids multiple stop / starts
+
+//   for (size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
+//   {
+//     setReleaseThreshold(electrode,threshold);
+//   }
+
+//   if (was_running)
+//   {
+//     run();
+//   }
+// }
+
+// void MPR121::setReleaseThreshold(uint8_t electrode, uint8_t threshold)
+// {
+//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
+//   {
+//     return; // avoid out of bounds behaviour
+//   }
+
+//   // this relies on the internal register map of the MPR121
+//   writeRegister(E0RTH + (electrode<<1), threshold);
+// }
+
+// uint8_t MPR121::getTouchThreshold(uint8_t electrode)
+// {
+//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
+//   {
+//     return(0xFF); // avoid out of bounds behaviour
+//   }
+//   return readRegister(E0TTH+(electrode<<1)); // "255" issue is in here somewhere
+// }
+// uint8_t MPR121::getReleaseThreshold(uint8_t electrode)
+// {
+//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
+//   {
+//     return(0xFF); // avoid out of bounds behaviour
+//   }
+//   return readRegister(E0RTH+(electrode<<1)); // "255" issue is in here somewhere
+// }
 
 void MPR121::setWire(TwoWire & wire,
   bool fast_mode)
@@ -85,8 +185,8 @@ bool MPR121::resetAllDevices()
   return all_successfully_reset;
 }
 
-void MPR121::enableChannels(DeviceAddress device_address,
-  uint8_t number_of_channels_enabled)
+void MPR121::startChannels(DeviceAddress device_address,
+  uint8_t channel_count)
 {
   // if (!isInitialized())
   // {
@@ -94,19 +194,19 @@ void MPR121::enableChannels(DeviceAddress device_address,
   // }
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
-  electrode_configuration.fields.electrode_enable = number_of_channels_enabled;
+  electrode_configuration.fields.electrode_enable = channel_count;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
-void MPR121::enableChannelsAllDevices(uint8_t number_of_channels_enabled)
+void MPR121::startChannelsAllDevices(uint8_t channel_count)
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    enableChannels(device_addresses_[device_index],number_of_channels_enabled);
+    startChannels(device_addresses_[device_index],channel_count);
   }
 }
 
-void MPR121::enableAllChannels(DeviceAddress device_address)
+void MPR121::startAllChannels(DeviceAddress device_address)
 {
   // if (!isInitialized())
   // {
@@ -114,11 +214,11 @@ void MPR121::enableAllChannels(DeviceAddress device_address)
   // }
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
-  electrode_configuration.fields.electrode_enable = CHANNEL_COUNT_MAX_PER_DEVICE;
+  electrode_configuration.fields.electrode_enable = CHANNELS_PER_DEVICE;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
-void MPR121::disableAllChannels(DeviceAddress device_address)
+void MPR121::stopAllChannels(DeviceAddress device_address)
 {
   // if (!isInitialized())
   // {
@@ -433,99 +533,6 @@ bool MPR121::reset(DeviceAddress device_address)
 //     return false; // avoid out of bounds behaviour
 //   }
 //   return ((previouslyTouched(electrode) == true) && (touched(electrode) == false));
-// }
-
-// void MPR121::setTouchThreshold(uint8_t threshold)
-// {
-//   if (!isInitialized())
-//   {
-//     return;
-//   }
-
-//   bool was_running = running_;
-
-//   if (was_running)
-//   {
-//     stop();  // can only change thresholds when not running
-//   }
-//   // checking here avoids multiple stop() / run()
-//   // calls
-
-//   for (size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
-//   {
-//     setTouchThreshold(electrode, threshold);
-//   }
-
-//   if (was_running)
-//   {
-//     run();
-//   }
-// }
-
-void MPR121::setTouchThreshold(uint8_t channel,
-  uint8_t threshold)
-{
-  if ((channel >= CHANNEL_COUNT) || !isInitialized())
-  {
-    return; // avoid out of bounds behaviour
-  }
-
-  // this relies on the internal register map of the MPR121
-  writeRegister(E0TTH + (channel<<1), threshold);
-}
-
-// void MPR121::setReleaseThreshold(uint8_t threshold)
-// {
-//   if (!isInitialized())
-//   {
-//     return;
-//   }
-
-//   bool was_running = running;
-
-//   if(was_running)
-//   {
-//     stop();  // can only change thresholds when not running
-//   }
-//   // checking here avoids multiple stop / starts
-
-//   for (size_t electrode=0; electrode<ELECTRODE_COUNT; ++electrode)
-//   {
-//     setReleaseThreshold(electrode,threshold);
-//   }
-
-//   if (was_running)
-//   {
-//     run();
-//   }
-// }
-
-// void MPR121::setReleaseThreshold(uint8_t electrode, uint8_t threshold)
-// {
-//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
-//   {
-//     return; // avoid out of bounds behaviour
-//   }
-
-//   // this relies on the internal register map of the MPR121
-//   writeRegister(E0RTH + (electrode<<1), threshold);
-// }
-
-// uint8_t MPR121::getTouchThreshold(uint8_t electrode)
-// {
-//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
-//   {
-//     return(0xFF); // avoid out of bounds behaviour
-//   }
-//   return readRegister(E0TTH+(electrode<<1)); // "255" issue is in here somewhere
-// }
-// uint8_t MPR121::getReleaseThreshold(uint8_t electrode)
-// {
-//   if ((electrode >= ELECTRODE_COUNT) || !isInitialized())
-//   {
-//     return(0xFF); // avoid out of bounds behaviour
-//   }
-//   return readRegister(E0RTH+(electrode<<1)); // "255" issue is in here somewhere
 // }
 
 // void MPR121::setInterruptPin(const int pin)
@@ -873,10 +880,20 @@ void MPR121::setTouchThreshold(uint8_t channel,
 //   return value;
 // }
 
+uint8_t MPR121::channelToDeviceIndex(uint8_t channel)
+{
+  return channel / CHANNELS_PER_DEVICE;
+}
+
+uint8_t MPR121::channelToDeviceChannel(uint8_t channel)
+{
+  return channel % CHANNELS_PER_DEVICE;
+}
+
 void MPR121::applySettings(DeviceAddress device_address,
   const Settings & settings)
 {
-  disableAllChannels(device_address);
+  stopAllChannels(device_address);
 
   write(device_address,MHDR_REGISTER_ADDRESS,settings.MHDR);
   write(device_address,NHDR_REGISTER_ADDRESS,settings.NHDR);

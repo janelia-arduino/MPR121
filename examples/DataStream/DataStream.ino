@@ -12,7 +12,7 @@ void setup()
   Serial.begin(constants::baud);
 
   mpr121.setupSingleDevice(Wire,constants::device_address);
-  mpr121.enableChannels(constants::channel_count);
+  mpr121.startChannels(constants::channel_count);
 
   // if(!mpr121.begin(ADDRESS))
   // {
