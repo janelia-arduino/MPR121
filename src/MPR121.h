@@ -44,16 +44,15 @@ public:
   // sets touch and release thresholds either for all channels, or
   // for a specfic channel - higher values = less sensitive and
   // release threshold must ALWAYS be lower than touch threshold
-  // void setTouchThreshold(uint8_t threshold);
   void setChannelTouchThreshold(uint8_t channel,
     uint8_t threshold);
-  // void setReleaseThreshold(uint8_t threshold);
+  // void setAllChannelsTouchThreshold(uint8_t threshold);
   void setChannelReleaseThreshold(uint8_t channel,
     uint8_t threshold);
+  // void setAllChannelsReleaseThreshold(uint8_t threshold);
 
-  // returns the current touch or release threshold for a specified channel
-  // uint8_t getTouchThreshold(uint8_t channel);
-  // uint8_t getReleaseThreshold(uint8_t channel);
+  uint8_t getChannelTouchThreshold(uint8_t channel);
+  uint8_t getChannelReleaseThreshold(uint8_t channel);
 
   // Methods for using multiple devices
   // Take care when using fast_mode with non-MPR121 devices
@@ -68,6 +67,19 @@ public:
   void startChannelsAllDevices(uint8_t channel_count);
   void startAllChannels(DeviceAddress device_address);
   void stopAllChannels(DeviceAddress device_address);
+
+  void setDeviceChannelTouchThreshold(DeviceAddress device_address,
+    uint8_t device_channel,
+    uint8_t threshold);
+  void setAllDeviceChannelsTouchThreshold(DeviceAddress device_address,
+    uint8_t threshold);
+  void setDeviceChannelReleaseThreshold(DeviceAddress device_address,
+    uint8_t device_channel,
+    uint8_t threshold);
+  void setAllDeviceChannelsReleaseThreshold(DeviceAddress device_address,
+    uint8_t threshold);
+
+  uint16_t getTouchStatus(DeviceAddress device_address);
 
   // void stop(DeviceAddress device_address);
   // bool isRunning(DeviceAddress device_address);
@@ -234,14 +246,11 @@ private:
   // const static uint8_t OVERCURRENT_FLAG_BIT = 3;
   // const static uint8_t OUT_OF_RANGE_BIT = 4;
 
-  // const static uint8_t ELECTRODE_COUNT = 13;
-
   // const static uint8_t DIGITAL_PIN_COUNT_MAX = 8;
 
-  // // registers
-  // // touch and OOR statuses
-  // const static uint8_t TSL_REGISTER_ADDRESS = 0x00;
-  // const static uint8_t TSH_REGISTER_ADDRESS = 0x01;
+  // register addresses
+  // touch and OOR statuses
+  const static uint8_t TOUCH_STATUS_REGISTER_ADDRESS = 0x00;
   // const static uint8_t OORSL_REGISTER_ADDRESS = 0x02;
   // const static uint8_t OORSH_REGISTER_ADDRESS = 0x03;
 
@@ -327,30 +336,6 @@ private:
   // // electrode touch and release thresholds
   const static uint8_t E0TTH_REGISTER_ADDRESS = 0x41;
   const static uint8_t E0RTH_REGISTER_ADDRESS = 0x42;
-  // const static uint8_t E1TTH_REGISTER_ADDRESS = 0x43;
-  // const static uint8_t E1RTH_REGISTER_ADDRESS = 0x44;
-  // const static uint8_t E2TTH_REGISTER_ADDRESS = 0x45;
-  // const static uint8_t E2RTH_REGISTER_ADDRESS = 0x46;
-  // const static uint8_t E3TTH_REGISTER_ADDRESS = 0x47;
-  // const static uint8_t E3RTH_REGISTER_ADDRESS = 0x48;
-  // const static uint8_t E4TTH_REGISTER_ADDRESS = 0x49;
-  // const static uint8_t E4RTH_REGISTER_ADDRESS = 0x4A;
-  // const static uint8_t E5TTH_REGISTER_ADDRESS = 0x4B;
-  // const static uint8_t E5RTH_REGISTER_ADDRESS = 0x4C;
-  // const static uint8_t E6TTH_REGISTER_ADDRESS = 0x4D;
-  // const static uint8_t E6RTH_REGISTER_ADDRESS = 0x4E;
-  // const static uint8_t E7TTH_REGISTER_ADDRESS = 0x4F;
-  // const static uint8_t E7RTH_REGISTER_ADDRESS = 0x50;
-  // const static uint8_t E8TTH_REGISTER_ADDRESS = 0x51;
-  // const static uint8_t E8RTH_REGISTER_ADDRESS = 0x52;
-  // const static uint8_t E9TTH_REGISTER_ADDRESS = 0x53;
-  // const static uint8_t E9RTH_REGISTER_ADDRESS = 0x54;
-  // const static uint8_t E10TTH_REGISTER_ADDRESS = 0x55;
-  // const static uint8_t E10RTH_REGISTER_ADDRESS = 0x56;
-  // const static uint8_t E11TTH_REGISTER_ADDRESS = 0x57;
-  // const static uint8_t E11RTH_REGISTER_ADDRESS = 0x58;
-  // const static uint8_t E12TTH_REGISTER_ADDRESS = 0x59;
-  // const static uint8_t E12RTH_REGISTER_ADDRESS = 0x5A;
 
   // debounce settings
   const static uint8_t DTR_REGISTER_ADDRESS = 0x5B;
@@ -518,10 +503,9 @@ private:
   };
   const Settings default_settings_;
 
-  // TwoWire * wire_ptr_;
-  // uint8_t address_;
-  // uint8_t ecr_backup_; // so we can re-enable the correct number of electrodes
-  // // when recovering from stop mode
+  ElectrodeConfiguration electrode_configuration_backup_;
+  void pauseChannels(DeviceAddress device_address);
+  void resumeChannels(DeviceAddress device_address);
   // uint8_t error_byte_;
   // bool running_;
 
