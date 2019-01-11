@@ -3,22 +3,12 @@
 //
 // Authors:
 // Peter Polidoro peterpolidoro@gmail.com
-// Jim Lindblom
-// Stefan Dzisiewski-Smith
-// Peter Krige
-// Adafruit <info@adafruit.com>
 // ----------------------------------------------------------------------------
 #include "MPR121.h"
 
 MPR121::MPR121()
 {
   device_count_ = 0;
-  // ecr_backup_ = 0x00;
-  // error_byte_ = 1<<NOT_INITIALIZED_BIT; // initially, we're not initialised
-  // running_ = false;
-  // touch_data_ = 0;
-  // touch_data_previous_ = 0;
-  // any_touched_flag_ = false;
 }
 
 bool MPR121::setupSingleDevice(TwoWire & wire,
@@ -57,10 +47,20 @@ uint8_t MPR121::getChannelCount()
   return CHANNELS_PER_DEVICE * device_count_;
 }
 
-void MPR121::setChannelTouchThreshold(uint8_t channel,
-  uint8_t threshold)
+uint8_t MPR121::getRunningChannelCount()
 {
-  // if ((channel >= CHANNEL_COUNT) || !isInitialized())
+  uint8_t running_channel_count = 0;
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
+  {
+    running_channel_count += getRunningChannelCount(device_addresses_[device_index]);
+  }
+  return running_channel_count;
+}
+
+void MPR121::setChannelThresholds(uint8_t channel,
+  uint8_t touch_threshold,
+  uint8_t release_threshold)
+{
   if (channel >= getChannelCount())
   {
     return;
@@ -69,50 +69,21 @@ void MPR121::setChannelTouchThreshold(uint8_t channel,
   uint8_t device_channel = channelToDeviceChannel(channel);
   DeviceAddress device_address = device_addresses_[device_index];
 
-  setDeviceChannelTouchThreshold(device_address,device_channel,threshold);
+  setDeviceChannelThresholds(device_address,
+    device_channel,
+    touch_threshold,
+    release_threshold);
 }
 
-void MPR121::setChannelReleaseThreshold(uint8_t channel,
-  uint8_t threshold)
+void MPR121::setAllChannelsThresholds(uint8_t touch_threshold,
+  uint8_t release_threshold)
 {
-  // if ((channel >= CHANNEL_COUNT) || !isInitialized())
-  if (channel >= getChannelCount())
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    return;
+    setAllDeviceChannelsThresholds(device_addresses_[device_index],
+      touch_threshold,
+      release_threshold);
   }
-  uint8_t device_index = channelToDeviceIndex(channel);
-  uint8_t device_channel = channelToDeviceChannel(channel);
-  DeviceAddress device_address = device_addresses_[device_index];
-
-  setDeviceChannelReleaseThreshold(device_address,device_channel,threshold);
-}
-
-uint8_t MPR121::getChannelTouchThreshold(uint8_t channel)
-{
-  if (channel >= getChannelCount())
-  {
-    return 0;
-  }
-  uint8_t device_index = channelToDeviceIndex(channel);
-  uint8_t device_channel = channelToDeviceChannel(channel);
-  uint8_t register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
-  uint8_t threshold;
-  read(device_addresses_[device_index],register_address,threshold);
-  return threshold;
-}
-
-uint8_t MPR121::getChannelReleaseThreshold(uint8_t channel)
-{
-  if (channel >= getChannelCount())
-  {
-    return 0;
-  }
-  uint8_t device_index = channelToDeviceIndex(channel);
-  uint8_t device_channel = channelToDeviceChannel(channel);
-  uint8_t register_address = E0RTH_REGISTER_ADDRESS + device_channel * 2;
-  uint8_t threshold;
-  read(device_addresses_[device_index],register_address,threshold);
-  return threshold;
 }
 
 void MPR121::setWire(TwoWire & wire,
@@ -134,6 +105,7 @@ void MPR121::addDevice(DeviceAddress device_address)
     return;
   }
   device_addresses_[device_count_++] = device_address;
+  setDeviceProximityMode(device_address,DISABLED);
 }
 
 bool MPR121::resetAllDevices()
@@ -151,13 +123,18 @@ bool MPR121::resetAllDevices()
 void MPR121::startChannels(DeviceAddress device_address,
   uint8_t channel_count)
 {
-  // if (!isInitialized())
-  // {
-  //   return;
-  // }
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
   electrode_configuration.fields.electrode_enable = channel_count;
+  if (channel_count >= CHANNELS_PER_DEVICE)
+  {
+    electrode_configuration.fields.proximity_enable = proximity_modes_[device_index];
+  }
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
@@ -175,9 +152,15 @@ void MPR121::startAllChannels(DeviceAddress device_address)
   // {
   //   return;
   // }
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
   electrode_configuration.fields.electrode_enable = CHANNELS_PER_DEVICE;
+  electrode_configuration.fields.proximity_enable = proximity_modes_[device_index];
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
@@ -187,62 +170,116 @@ void MPR121::stopAllChannels(DeviceAddress device_address)
   // {
   //   return;
   // }
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
   electrode_configuration.fields.electrode_enable = 0;
+  electrode_configuration.fields.proximity_enable = 0;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
-void MPR121::setDeviceChannelTouchThreshold(DeviceAddress device_address,
-  uint8_t device_channel,
-  uint8_t threshold)
+void MPR121::setDeviceProximityMode(DeviceAddress device_address,
+  ProximityMode proximity_mode)
 {
-  // if ((channel >= CHANNEL_COUNT) || !isInitialized())
-  if (channel >= CHANNELS_PER_DEVICE)
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
   {
     return;
   }
-  pauseChannels(device_address);
-  uint8_t register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
-  write(device_address,register_address,threshold);
-  resumeChannels(device_address);
+  proximity_modes_[device_index] = proximity_mode;
 }
 
-void MPR121::setAllDeviceChannelsTouchThreshold(DeviceAddress device_address,
-  uint8_t threshold)
+void MPR121::setAllDevicesProximityMode(ProximityMode proximity_mode)
 {
-  pauseChannels(device_address);
-  for (uint8_t device_channel=0; device_channel<CHANNELS_PER_DEVICE; ++device_channel)
+  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    uint8_t register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
-    write(device_address,register_address,threshold);
+    proximity_modes_[device_index] = proximity_mode;
   }
-  resumeChannels(device_address);
 }
 
-void MPR121::setDeviceChannelReleaseThreshold(DeviceAddress device_address,
+uint8_t MPR121::getDeviceCount()
+{
+  return device_count_;
+}
+
+uint8_t MPR121::getDeviceChannelCount()
+{
+  return CHANNELS_PER_DEVICE;
+}
+
+uint8_t MPR121::getRunningChannelCount(DeviceAddress device_address)
+{
+  ElectrodeConfiguration electrode_configuration;
+  read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+  uint8_t running_channel_count = electrode_configuration.fields.electrode_enable;
+  if (running_channel_count >= CHANNELS_PER_DEVICE)
+  {
+    running_channel_count = CHANNELS_PER_DEVICE - 1;
+  }
+  if (electrode_configuration.fields.proximity_enable)
+  {
+    running_channel_count += 1;
+  }
+  return running_channel_count;
+}
+
+void MPR121::setDeviceChannelThresholds(DeviceAddress device_address,
   uint8_t device_channel,
-  uint8_t threshold)
+  uint8_t touch_threshold,
+  uint8_t release_threshold)
 {
   // if ((channel >= CHANNEL_COUNT) || !isInitialized())
-  if (channel >= CHANNELS_PER_DEVICE)
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
   {
     return;
   }
+  if (device_channel >= CHANNELS_PER_DEVICE)
+  {
+    return;
+  }
+  if (release_threshold > touch_threshold)
+  {
+    uint8_t threshold = touch_threshold;
+    touch_threshold = release_threshold;
+    release_threshold = threshold;
+  }
+  uint8_t register_address;
   pauseChannels(device_address);
-  uint8_t register_address = E0RTH_REGISTER_ADDRESS + device_channel * 2;
-  write(device_addresses_[device_index],register_address,threshold);
+  register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
+  write(device_address,register_address,touch_threshold);
+  register_address = E0RTH_REGISTER_ADDRESS + device_channel * 2;
+  write(device_address,register_address,release_threshold);
   resumeChannels(device_address);
 }
 
-void MPR121::setAllDeviceChannelsReleaseThreshold(DeviceAddress device_address,
-  uint8_t threshold)
+void MPR121::setAllDeviceChannelsThresholds(DeviceAddress device_address,
+  uint8_t touch_threshold,
+  uint8_t release_threshold)
 {
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  if (release_threshold > touch_threshold)
+  {
+    uint8_t threshold = touch_threshold;
+    touch_threshold = release_threshold;
+    release_threshold = threshold;
+  }
+  uint8_t register_address;
   pauseChannels(device_address);
   for (uint8_t device_channel=0; device_channel<CHANNELS_PER_DEVICE; ++device_channel)
   {
-    uint8_t register_address = E0RTH_REGISTER_ADDRESS + device_channel * 2;
-    write(device_address,register_address,threshold);
+    register_address = E0TTH_REGISTER_ADDRESS + device_channel * 2;
+    write(device_address,register_address,touch_threshold);
+    register_address = E0RTH_REGISTER_ADDRESS + device_channel * 2;
+    write(device_address,register_address,release_threshold);
   }
   resumeChannels(device_address);
 }

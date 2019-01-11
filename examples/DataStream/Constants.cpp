@@ -17,7 +17,7 @@ const bool fast_mode = true;
 
 const size_t loop_delay = 500;
 
-const uint8_t channel_count = 12;
+const uint8_t channel_count = 2;
 const uint8_t channel = 0;
 
 // this is the touch threshold - setting it low makes it more like a proximity trigger

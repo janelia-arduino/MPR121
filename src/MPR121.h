@@ -3,10 +3,6 @@
 //
 // Authors:
 // Peter Polidoro peterpolidoro@gmail.com
-// Jim Lindblom
-// Stefan Dzisiewski-Smith
-// Peter Krige
-// Adafruit <info@adafruit.com>
 // ----------------------------------------------------------------------------
 #ifndef MPR121_H
 #define MPR121_H
@@ -40,19 +36,15 @@ public:
   void stopAllChannels();
 
   uint8_t getChannelCount();
+  uint8_t getRunningChannelCount();
 
   // sets touch and release thresholds either for all channels, or
-  // for a specfic channel - higher values = less sensitive and
-  // release threshold must ALWAYS be lower than touch threshold
-  void setChannelTouchThreshold(uint8_t channel,
-    uint8_t threshold);
-  // void setAllChannelsTouchThreshold(uint8_t threshold);
-  void setChannelReleaseThreshold(uint8_t channel,
-    uint8_t threshold);
-  // void setAllChannelsReleaseThreshold(uint8_t threshold);
-
-  uint8_t getChannelTouchThreshold(uint8_t channel);
-  uint8_t getChannelReleaseThreshold(uint8_t channel);
+  // for a specfic channel - higher values = less sensitive
+  void setChannelThresholds(uint8_t channel,
+    uint8_t touch_threshold,
+    uint8_t release_threshold);
+  void setAllChannelsThresholds(uint8_t touch_threshold,
+    uint8_t release_threshold);
 
   // Methods for using multiple devices
   // Take care when using fast_mode with non-MPR121 devices
@@ -68,16 +60,38 @@ public:
   void startAllChannels(DeviceAddress device_address);
   void stopAllChannels(DeviceAddress device_address);
 
-  void setDeviceChannelTouchThreshold(DeviceAddress device_address,
+  // set number of channels to use to generate virtual "13th"
+  // proximity channel
+  // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
+  //
+  // N.B. - this is not related to general proximity detection or
+  // reading back continuous proximity data
+  // "13th channel" proximity modes
+  // N.B. this does not relate to normal proximity detection
+  // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
+  // DISABLED by default
+  enum ProximityMode
+    {
+     DISABLED = 0b00,
+     COMBINE_CHANNELS_0_TO_1 = 0b01,
+     COMBINE_CHANNELS_0_TO_3 = 0b10,
+     COMBINE_CHANNELS_0_TO_11 = 0b11,
+    };
+  void setDeviceProximityMode(DeviceAddress device_address,
+    ProximityMode proximity_mode);
+  void setAllDevicesProximityMode(ProximityMode proximity_mode);
+
+  uint8_t getDeviceCount();
+  uint8_t getDeviceChannelCount();
+  uint8_t getRunningChannelCount(DeviceAddress device_address);
+
+  void setDeviceChannelThresholds(DeviceAddress device_address,
     uint8_t device_channel,
-    uint8_t threshold);
-  void setAllDeviceChannelsTouchThreshold(DeviceAddress device_address,
-    uint8_t threshold);
-  void setDeviceChannelReleaseThreshold(DeviceAddress device_address,
-    uint8_t device_channel,
-    uint8_t threshold);
-  void setAllDeviceChannelsReleaseThreshold(DeviceAddress device_address,
-    uint8_t threshold);
+    uint8_t touch_threshold,
+    uint8_t release_threshold);
+  void setAllDeviceChannelsThresholds(DeviceAddress device_address,
+    uint8_t touch_threshold,
+    uint8_t release_threshold);
 
   uint16_t getTouchStatus(DeviceAddress device_address);
 
@@ -132,24 +146,6 @@ public:
   // bool isNewRelease(uint8_t channel);
 
   // // ------------------ ADVANCED FUNCTIONS ------------------
-
-  // // set number of electrodes to use to generate virtual "13th"
-  // // proximity electrode
-  // // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
-  // //
-  // // N.B. - this is not related to general proximity detection or
-  // // reading back continuous proximity data
-  // // "13th electrode" proximity modes
-  // // N.B. this does not relate to normal proximity detection
-  // // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
-  // enum ProximityMode
-  //   {
-  //    DISABLED, // proximity mode disabled
-  //    PROX0_1, // proximity mode for ELE0..ELE1
-  //    PROX0_3, // proximity mode for ELE0..ELE3
-  //    PROX0_11, // proximity mode for ELE0..ELE11
-  //   };
-  // void setProximityMode(const ProximityMode mode);
 
   // // Enables GPIO mode for up to 8 of the MPR121 electrodes
   // // starts with electrode 11 - i.e. setNumDigPins(1) sets just
@@ -215,6 +211,7 @@ private:
   enum {DEVICE_COUNT_MAX=4};
   uint8_t device_count_;
   DeviceAddress device_addresses_[DEVICE_COUNT_MAX];
+  ProximityMode proximity_modes_[DEVICE_COUNT_MAX];
 
   TwoWire * wire_ptr_;
   const static long FAST_MODE_CLOCK_FREQUENCY = 400000;
