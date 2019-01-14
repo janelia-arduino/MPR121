@@ -17,20 +17,31 @@ bool MPR121::setupSingleDevice(TwoWire & wire,
 {
   setWire(Wire,fast_mode);
   addDevice(device_address);
-  bool successfully_reset = resetAllDevices();
-  return successfully_reset;
+  bool successfully_setup = setupAllDevices();
+  return successfully_setup;
 }
 
-void MPR121::startChannels(uint8_t channel_count)
+// proximity_mode:
+// set number of channels to use to generate virtual "13th"
+// proximity channel
+// see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
+//
+// N.B. - this is not related to general proximity detection or
+// reading back continuous proximity data
+// "13th channel" proximity modes
+// N.B. this does not relate to normal proximity detection
+// see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
+void MPR121::startChannels(uint8_t physical_channel_count,
+  ProximityMode proximity_mode)
 {
-  startChannelsAllDevices(channel_count);
+  startChannelsAllDevices(physical_channel_count,proximity_mode);
 }
 
-void MPR121::startAllChannels()
+void MPR121::startAllChannels(ProximityMode proximity_mode)
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    startAllChannels(device_addresses_[device_index]);
+    startAllChannels(device_addresses_[device_index],proximity_mode);
   }
 }
 
@@ -104,72 +115,73 @@ void MPR121::addDevice(DeviceAddress device_address)
   {
     return;
   }
-  device_addresses_[device_count_++] = device_address;
-  setDeviceProximityMode(device_address,DISABLED);
+  uint8_t device_index = device_count_++;
+  device_addresses_[device_index] = device_address;
+  proximity_modes_[device_index] = DISABLED;
 }
 
-bool MPR121::resetAllDevices()
+bool MPR121::setupAllDevices()
 {
-  bool successfully_reset;
-  bool all_successfully_reset = true;
+  bool successfully_setup;
+  bool all_successfully_setup = true;
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    successfully_reset = reset(device_addresses_[device_index]);
-    all_successfully_reset = (all_successfully_reset && successfully_reset);
+    successfully_setup = setup(device_addresses_[device_index]);
+    all_successfully_setup = (all_successfully_setup && successfully_setup);
   }
-  return all_successfully_reset;
+  return all_successfully_setup;
 }
 
 void MPR121::startChannels(DeviceAddress device_address,
-  uint8_t channel_count)
+  uint8_t physical_channel_count,
+  ProximityMode proximity_mode)
 {
   int device_index = deviceAddressToDeviceIndex(device_address);
   if (device_index < 0)
   {
     return;
   }
+  proximity_modes_[device_index] = proximity_mode;
+
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
-  electrode_configuration.fields.electrode_enable = channel_count;
-  if (channel_count >= CHANNELS_PER_DEVICE)
+  if (physical_channel_count > PHYSICAL_CHANNELS_PER_DEVICE)
   {
-    electrode_configuration.fields.proximity_enable = proximity_modes_[device_index];
+    physical_channel_count = PHYSICAL_CHANNELS_PER_DEVICE;
   }
+  electrode_configuration.fields.electrode_enable = physical_channel_count;
+  electrode_configuration.fields.proximity_enable = proximity_mode;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
-void MPR121::startChannelsAllDevices(uint8_t channel_count)
+void MPR121::startChannelsAllDevices(uint8_t physical_channel_count,
+  ProximityMode proximity_mode)
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    startChannels(device_addresses_[device_index],channel_count);
+    startChannels(device_addresses_[device_index],physical_channel_count);
   }
 }
 
-void MPR121::startAllChannels(DeviceAddress device_address)
+void MPR121::startAllChannels(DeviceAddress device_address,
+  ProximityMode proximity_mode)
 {
-  // if (!isInitialized())
-  // {
-  //   return;
-  // }
   int device_index = deviceAddressToDeviceIndex(device_address);
   if (device_index < 0)
   {
     return;
   }
+  proximity_modes_[device_index] = proximity_mode;
+
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
-  electrode_configuration.fields.electrode_enable = CHANNELS_PER_DEVICE;
-  electrode_configuration.fields.proximity_enable = proximity_modes_[device_index];
+  electrode_configuration.fields.electrode_enable = PHYSICAL_CHANNELS_PER_DEVICE;
+  electrode_configuration.fields.proximity_enable = proximity_mode;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
 }
 
 void MPR121::stopAllChannels(DeviceAddress device_address)
 {
-  // if (!isInitialized())
-  // {
-  //   return;
-  // }
   int device_index = deviceAddressToDeviceIndex(device_address);
   if (device_index < 0)
   {
@@ -180,25 +192,6 @@ void MPR121::stopAllChannels(DeviceAddress device_address)
   electrode_configuration.fields.electrode_enable = 0;
   electrode_configuration.fields.proximity_enable = 0;
   write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
-}
-
-void MPR121::setDeviceProximityMode(DeviceAddress device_address,
-  ProximityMode proximity_mode)
-{
-  int device_index = deviceAddressToDeviceIndex(device_address);
-  if (device_index < 0)
-  {
-    return;
-  }
-  proximity_modes_[device_index] = proximity_mode;
-}
-
-void MPR121::setAllDevicesProximityMode(ProximityMode proximity_mode)
-{
-  for (uint8_t device_index=0; device_index<device_count_; ++device_index)
-  {
-    proximity_modes_[device_index] = proximity_mode;
-  }
 }
 
 uint8_t MPR121::getDeviceCount()
@@ -216,9 +209,9 @@ uint8_t MPR121::getRunningChannelCount(DeviceAddress device_address)
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
   uint8_t running_channel_count = electrode_configuration.fields.electrode_enable;
-  if (running_channel_count >= CHANNELS_PER_DEVICE)
+  if (running_channel_count >= PHYSICAL_CHANNELS_PER_DEVICE)
   {
-    running_channel_count = CHANNELS_PER_DEVICE - 1;
+    running_channel_count = PHYSICAL_CHANNELS_PER_DEVICE;
   }
   if (electrode_configuration.fields.proximity_enable)
   {
@@ -232,7 +225,6 @@ void MPR121::setDeviceChannelThresholds(DeviceAddress device_address,
   uint8_t touch_threshold,
   uint8_t release_threshold)
 {
-  // if ((channel >= CHANNEL_COUNT) || !isInitialized())
   int device_index = deviceAddressToDeviceIndex(device_address);
   if (device_index < 0)
   {
@@ -307,7 +299,7 @@ int MPR121::deviceAddressToDeviceIndex(DeviceAddress device_address)
   return device_index;
 }
 
-bool MPR121::reset(DeviceAddress device_address)
+bool MPR121::setup(DeviceAddress device_address)
 {
   // soft reset
   write(device_address,SRST_REGISTER_ADDRESS,SRST_REGISTER_VALUE);
@@ -325,62 +317,7 @@ bool MPR121::reset(DeviceAddress device_address)
   {
     return !SUCCESS;
   }
-  // if (readRegister(CDT)!=0x24)
-  // {
-  //   error_byte_ |= 1<<READBACK_FAIL_BIT;
-  // }
-  // else
-  // {
-  //   error_byte_ &= ~(1<<READBACK_FAIL_BIT);
-  // }
-
-  // if ((readRegister(TSH_REGISTER_ADDRESS)&0x80)!=0)
-  // {
-  //   error_byte_ |= 1<<OVERCURRENT_FLAG_BIT;
-  // }
-  // else
-  // {
-  //   error_byte_ &= ~(1<<OVERCURRENT_FLAG_BIT);
-  // }
-
-  // if (getError()==NOT_INITIALIZED || getError()==NO_ERROR)
-  // { // if our only error is that we are not initialized...
-  //   return SUCCESS;
-  // }
-  // else
-  // {
-  //   return !SUCCESS;
-  // }
 }
-
-// void MPR121::stop()
-// {
-//   // if(!isInitialized())
-//   // {
-//   //   return;
-//   // }
-//   ecr_backup_ = readRegister(ECR);  // backup ECR to restore when we enter run
-//   writeRegister(ECR, ecr_backup_ & 0xC0); // turn off all electrodes to stop
-// }
-
-// bool MPR121::isRunning()
-// {
-//   return running_;
-// }
-
-// bool MPR121::begin()
-// {
-//   wire_ptr_->begin();
-
-//   error_byte_ &= ~(1<<NOT_INITIALIZED_BIT); // clear NOT_INITIALIZED error flag
-
-//   if(reset())
-//   {
-//     applySettings(default_settings_);
-//     return SUCCESS;
-//   }
-//   return !SUCCESS;
-// }
 
 // Error MPR121::getError()
 // {

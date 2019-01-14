@@ -11,52 +11,11 @@ void setup()
 {
   Serial.begin(constants::baud);
 
-  mpr121.setupSingleDevice(Wire,constants::device_address,constants::fast_mode);
-  mpr121.startChannels(constants::channel_count);
-
-  // if(!mpr121.begin(ADDRESS))
-  // {
-  //   Serial.println("error setting up mpr121");
-  //   switch(mpr121.getError())
-  //   {
-  //     case NO_ERROR:
-  //     {
-  //       Serial.println("no error");
-  //       break;
-  //     }
-  //     case ADDRESS_UNKNOWN:
-  //     {
-  //       Serial.println("incorrect address");
-  //       break;
-  //     }
-  //     case READBACK_FAIL:
-  //     {
-  //       Serial.println("readback failure");
-  //       break;
-  //     }
-  //     case OVERCURRENT_FLAG:
-  //     {
-  //       Serial.println("overcurrent on REXT pin");
-  //       break;
-  //     }
-  //     case OUT_OF_RANGE:
-  //     {
-  //       Serial.println("electrode out of range");
-  //       break;
-  //     }
-  //     case NOT_INITIALIZED:
-  //     {
-  //       Serial.println("not initialised");
-  //       break;
-  //     }
-  //     default:
-  //     {
-  //       Serial.println("unknown error");
-  //       break;
-  //     }
-  //   }
-  // }
-
+  mpr121.setupSingleDevice(Wire,
+    constants::device_address,
+    constants::fast_mode);
+  mpr121.startChannels(constants::physical_channel_count,
+    constants::proximity_mode);
   mpr121.setAllChannelsThresholds(constants::touch_threshold,
     constants::release_threshold);
 }

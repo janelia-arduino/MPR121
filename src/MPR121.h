@@ -31,8 +31,16 @@ public:
     bool fast_mode=false);
 
   // Methods for using a single device or multiple devices
-  void startChannels(uint8_t channel_count);
-  void startAllChannels();
+  enum ProximityMode
+    {
+     DISABLED = 0b00,
+     COMBINE_CHANNELS_0_TO_1 = 0b01,
+     COMBINE_CHANNELS_0_TO_3 = 0b10,
+     COMBINE_CHANNELS_0_TO_11 = 0b11,
+    };
+  void startChannels(uint8_t physical_channel_count,
+    ProximityMode proximity_mode=DISABLED);
+  void startAllChannels(ProximityMode proximity_mode=DISABLED);
   void stopAllChannels();
 
   uint8_t getChannelCount();
@@ -52,34 +60,16 @@ public:
     bool fast_mode=false);
 
   void addDevice(DeviceAddress device_address);
-  bool resetAllDevices();
+  bool setupAllDevices();
 
   void startChannels(DeviceAddress device_address,
-    uint8_t channel_count);
-  void startChannelsAllDevices(uint8_t channel_count);
-  void startAllChannels(DeviceAddress device_address);
+    uint8_t physical_channel_count,
+    ProximityMode proximity_mode=DISABLED);
+  void startChannelsAllDevices(uint8_t physical_channel_count,
+    ProximityMode proximity_mode=DISABLED);
+  void startAllChannels(DeviceAddress device_address,
+    ProximityMode proximity_mode=DISABLED);
   void stopAllChannels(DeviceAddress device_address);
-
-  // set number of channels to use to generate virtual "13th"
-  // proximity channel
-  // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
-  //
-  // N.B. - this is not related to general proximity detection or
-  // reading back continuous proximity data
-  // "13th channel" proximity modes
-  // N.B. this does not relate to normal proximity detection
-  // see http://cache.freescale.com/files/sensors/doc/app_note/AN3893.pdf
-  // DISABLED by default
-  enum ProximityMode
-    {
-     DISABLED = 0b00,
-     COMBINE_CHANNELS_0_TO_1 = 0b01,
-     COMBINE_CHANNELS_0_TO_3 = 0b10,
-     COMBINE_CHANNELS_0_TO_11 = 0b11,
-    };
-  void setDeviceProximityMode(DeviceAddress device_address,
-    ProximityMode proximity_mode);
-  void setAllDevicesProximityMode(ProximityMode proximity_mode);
 
   uint8_t getDeviceCount();
   uint8_t getDeviceChannelCount();
@@ -94,9 +84,6 @@ public:
     uint8_t release_threshold);
 
   uint16_t getTouchStatus(DeviceAddress device_address);
-
-  // void stop(DeviceAddress device_address);
-  // bool isRunning(DeviceAddress device_address);
 
   // // getError() returns an Error indicating the current
   // // error on the MPR121 - clearError() clears this
@@ -207,6 +194,7 @@ public:
   // void setSamplePeriod(SamplePeriod period);
 
 private:
+  enum {PHYSICAL_CHANNELS_PER_DEVICE=12};
   enum {CHANNELS_PER_DEVICE=13};
   enum {DEVICE_COUNT_MAX=4};
   uint8_t device_count_;
@@ -221,7 +209,7 @@ private:
 
   const static bool SUCCESS = true;
 
-  bool reset(DeviceAddress device_address);
+  bool setup(DeviceAddress device_address);
 
   template<typename T>
   void write(DeviceAddress device_address,
