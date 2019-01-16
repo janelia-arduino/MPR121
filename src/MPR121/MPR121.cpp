@@ -159,7 +159,9 @@ void MPR121::startChannelsAllDevices(uint8_t physical_channel_count,
 {
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    startChannels(device_addresses_[device_index],physical_channel_count);
+    startChannels(device_addresses_[device_index],
+      physical_channel_count,
+      proximity_mode);
   }
 }
 
@@ -213,6 +215,7 @@ uint8_t MPR121::getRunningChannelCount(DeviceAddress device_address)
   {
     running_channel_count = PHYSICAL_CHANNELS_PER_DEVICE;
   }
+  Serial << "electrode_configuration.fields.proximity_enable: " << electrode_configuration.fields.proximity_enable << "\n";
   if (electrode_configuration.fields.proximity_enable)
   {
     running_channel_count += 1;
@@ -936,9 +939,9 @@ void MPR121::applySettings(DeviceAddress device_address,
   write(device_address,LSL_REGISTER_ADDRESS,settings.LSL);
   write(device_address,TL_REGISTER_ADDRESS,settings.TL);
 
-  // error_byte_ &= ~(1<<NOT_INITIALIZED_BIT); // clear not inited error as we have just inited!
-  // setTouchThreshold(settings.touch_threshold);
-  // setReleaseThreshold(settings.release_threshold);
+  setAllDeviceChannelsThresholds(device_address,
+    settings.touch_threshold,
+    settings.release_threshold);
   // setInterruptPin(settings.INTERRUPT);
 }
 

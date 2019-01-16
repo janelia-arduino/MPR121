@@ -30,6 +30,7 @@ void loop()
   Serial << "touch_status: " << _BIN(touch_status) << "\n";
   Serial << "\n";
   delay(constants::loop_delay);
+
   // int i;
 
   // if(mpr121.touchStatusChanged()) mpr121.updateTouchData();

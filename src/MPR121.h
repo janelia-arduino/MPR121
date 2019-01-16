@@ -395,8 +395,8 @@ private:
 
   struct Settings
   {
-    // uint8_t touch_threshold;
-    // uint8_t release_threshold;
+    uint8_t touch_threshold;
+    uint8_t release_threshold;
 
     // general electrode touch sense baseline filters
     // rising filter
@@ -451,8 +451,8 @@ private:
 
     // default values in initialisation list
     Settings():
-      // touch_threshold(40),
-      // release_threshold(20),
+      touch_threshold(40),
+      release_threshold(20),
       MHDR(0x01),
       NHDR(0x01),
       NCLR(0x10),

@@ -15,7 +15,7 @@ const long baud = 115200;
 const MPR121::DeviceAddress device_address = MPR121::ADDRESS_5A;
 const bool fast_mode = true;
 
-const size_t loop_delay = 500;
+const size_t loop_delay = 200;
 
 const uint8_t physical_channel_count = 2;
 const MPR121::ProximityMode proximity_mode = MPR121::COMBINE_CHANNELS_0_TO_1;
