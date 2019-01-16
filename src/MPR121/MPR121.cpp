@@ -9,6 +9,7 @@
 MPR121::MPR121()
 {
   device_count_ = 0;
+  touch_status_mask_ = TOUCH_STATUS_MASK_BASE;
 }
 
 bool MPR121::setupSingleDevice(TwoWire & wire,
@@ -143,6 +144,8 @@ void MPR121::startChannels(DeviceAddress device_address,
   }
   proximity_modes_[device_index] = proximity_mode;
 
+  clearOverCurrentFlag(device_address);
+
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
   if (physical_channel_count > PHYSICAL_CHANNELS_PER_DEVICE)
@@ -174,6 +177,8 @@ void MPR121::startAllChannels(DeviceAddress device_address,
     return;
   }
   proximity_modes_[device_index] = proximity_mode;
+
+  clearOverCurrentFlag(device_address);
 
   ElectrodeConfiguration electrode_configuration;
   read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
@@ -284,6 +289,27 @@ uint16_t MPR121::getTouchStatus(DeviceAddress device_address)
   uint16_t touch_status;
   read(device_address,TOUCH_STATUS_REGISTER_ADDRESS,touch_status);
   return touch_status;
+}
+
+bool MPR121::overCurrentDetected(uint16_t touch_status)
+{
+  return touch_status & OVER_CURRENT_REXT;
+}
+
+bool MPR121::anyTouched(uint16_t touch_status)
+{
+  return touch_status & touch_status_mask_;
+}
+
+uint8_t MPR121::getTouchCount(uint16_t touch_status)
+{
+  return touch_status & touch_status_mask_;
+}
+
+bool MPR121::deviceChannelTouched(uint16_t touch_status,
+  uint8_t device_channel)
+{
+  return touch_status & (1 << device_channel);
 }
 
 // private
@@ -463,11 +489,6 @@ bool MPR121::setup(DeviceAddress device_address)
 //   updateTouchData();
 //   updateBaselineData();
 //   updateFilteredData();
-// }
-
-// bool MPR121::anyTouched()
-// {
-//   return any_touched_flag_;
 // }
 
 // bool MPR121::touched(uint8_t electrode)
@@ -943,6 +964,11 @@ void MPR121::applySettings(DeviceAddress device_address,
     settings.touch_threshold,
     settings.release_threshold);
   // setInterruptPin(settings.INTERRUPT);
+}
+
+void MPR121::clearOverCurrentFlag(DeviceAddress device_address)
+{
+  write(device_address,TOUCH_STATUS_REGISTER_ADDRESS,OVER_CURRENT_REXT);
 }
 
 // bool MPR121::previouslyTouched(uint8_t electrode)

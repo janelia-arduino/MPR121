@@ -84,6 +84,11 @@ public:
     uint8_t release_threshold);
 
   uint16_t getTouchStatus(DeviceAddress device_address);
+  bool overCurrentDetected(uint16_t touch_status);
+  bool anyTouched(uint16_t touch_status);
+  uint8_t getTouchCount(uint16_t touch_status);
+  bool deviceChannelTouched(uint16_t touch_status,
+    uint8_t device_channel);
 
   // // getError() returns an Error indicating the current
   // // error on the MPR121 - clearError() clears this
@@ -115,7 +120,6 @@ public:
   // bool updateFilteredData();
   // void updateAll();
 
-  // bool anyTouched();
 
   // // returns a boolean indicating the touch status of a given channel
   // bool touched(uint8_t channel);
@@ -224,6 +228,10 @@ private:
   const static uint8_t BITS_PER_TWO_BYTES = 16;
   const static uint8_t BYTE_MAX = 0xFF;
   const static uint16_t TWO_BYTE_MAX = 0xFFFF;
+
+  const static uint16_t OVER_CURRENT_REXT = 0x8000;
+  const static uint16_t TOUCH_STATUS_MASK_BASE = 0x1FFF;
+  uint16_t touch_status_mask_;
 
   // const static uint8_t NOT_INITIALIZED_BIT = 0;
   // const static uint8_t ADDRESS_UNKNOWN_BIT = 1;
@@ -513,6 +521,8 @@ private:
   // Settings variable useful if you want to do a bulk setup of the device
   void applySettings(DeviceAddress device_address,
     const Settings & settings);
+
+  void clearOverCurrentFlag(DeviceAddress device_address);
 
   // bool previouslyTouched(uint8_t electrode);
 
