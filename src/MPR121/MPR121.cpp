@@ -431,9 +431,9 @@ bool MPR121::setup(DeviceAddress device_address)
   delay(1);
 
   uint8_t register_data = 0;
-  read(device_address,CDT_REGISTER_ADDRESS,register_data);
+  read(device_address,SECOND_FILTER_REGISTER_ADDRESS,register_data);
 
-  if (register_data == CDT_REGISTER_DEFAULT)
+  if (register_data == SECOND_FILTER_REGISTER_DEFAULT)
   {
     applySettings(device_address,default_settings_);
     return SUCCESS;
@@ -444,14 +444,16 @@ bool MPR121::setup(DeviceAddress device_address)
   }
 }
 
-// void MPR121::setSamplePeriod(DeviceAddress device_address,
-//   SamplePeriod period)
-// {
-//   uint8_t scratch;
-
-//   scratch = readRegister(CDT);
-//   writeRegister(CDT, (scratch & 0xF8) | (period & 0x07));
-// }
+void MPR121::setSamplePeriod(DeviceAddress device_address,
+  SamplePeriod sample_period)
+{
+  SecondFilterConfiguration sfc;
+  read(device_address,SECOND_FILTER_REGISTER_ADDRESS,sfc.uint8);
+  sfc.fields.sample_period = sample_period;
+  pauseChannels(device_address);
+  write(device_address,SECOND_FILTER_REGISTER_ADDRESS,sfc.uint8);
+  resumeChannels(device_address);
+}
 
 void MPR121::pauseChannels(DeviceAddress device_address)
 {
@@ -508,8 +510,8 @@ void MPR121::applySettings(DeviceAddress device_address,
   write(device_address,NCLPROXT_REGISTER_ADDRESS,settings.NCLPROXT);
   write(device_address,FDLPROXT_REGISTER_ADDRESS,settings.FDLPROXT);
   write(device_address,DEBOUNCE_REGISTER_ADDRESS,settings.DEBOUNCE);
-  write(device_address,CDC_REGISTER_ADDRESS,settings.CDC);
-  write(device_address,CDT_REGISTER_ADDRESS,settings.CDT);
+  write(device_address,FIRST_FILTER_REGISTER_ADDRESS,settings.FIRST_FILTER);
+  write(device_address,SECOND_FILTER_REGISTER_ADDRESS,settings.SECOND_FILTER);
   write(device_address,ECR_REGISTER_ADDRESS,settings.ECR);
   write(device_address,ACCR0_REGISTER_ADDRESS,settings.ACCR0);
   write(device_address,ACCR1_REGISTER_ADDRESS,settings.ACCR1);

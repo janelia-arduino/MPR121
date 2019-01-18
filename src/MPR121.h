@@ -104,22 +104,22 @@ public:
   uint16_t getDeviceChannelBaselineData(DeviceAddress device_address,
     uint8_t device_channel);
 
-  // // Sets the sample period of the MPR121 - the time between capacitive
-  // // readings. Higher values consume less power, but are less responsive.
-  // // sample intervals
-  // enum SamplePeriod
-  //   {
-  //    SAMPLE_PERIOD_1MS = 0x00,
-  //    SAMPLE_PERIOD_2MS = 0x01,
-  //    SAMPLE_PERIOD_4MS = 0x02,
-  //    SAMPLE_PERIOD_8MS = 0x03,
-  //    SAMPLE_PERIOD_16MS = 0x04,
-  //    SAMPLE_PERIOD_32MS = 0x05,
-  //    SAMPLE_PERIOD_64MS = 0x06,
-  //    SAMPLE_PERIOD_128MS = 0x07
-  //   };
-  // void setSamplePeriod(DeviceAddress device_address,
-  //   SamplePeriod period);
+  // Sets the sample period of the MPR121 - the time between capacitive
+  // readings. Higher values consume less power, but are less responsive.
+  // sample intervals
+  enum SamplePeriod
+    {
+     SAMPLE_PERIOD_1MS = 0x00,
+     SAMPLE_PERIOD_2MS = 0x01,
+     SAMPLE_PERIOD_4MS = 0x02,
+     SAMPLE_PERIOD_8MS = 0x03,
+     SAMPLE_PERIOD_16MS = 0x04,
+     SAMPLE_PERIOD_32MS = 0x05,
+     SAMPLE_PERIOD_64MS = 0x06,
+     SAMPLE_PERIOD_128MS = 0x07
+    };
+  void setSamplePeriod(DeviceAddress device_address,
+    SamplePeriod sample_period);
 
 private:
   enum {PHYSICAL_CHANNELS_PER_DEVICE=12};
@@ -216,10 +216,29 @@ private:
   const static uint8_t DEBOUNCE_REGISTER_ADDRESS = 0x5B;
 
   // // configuration registers
-  const static uint8_t CDC_REGISTER_ADDRESS = 0x5C;
-  const static uint8_t CDC_REGISTER_DEFAULT = 0x10;
-  const static uint8_t CDT_REGISTER_ADDRESS = 0x5D;
-  const static uint8_t CDT_REGISTER_DEFAULT = 0x24;
+  const static uint8_t FIRST_FILTER_REGISTER_ADDRESS = 0x5C;
+  const static uint8_t FIRST_FILTER_REGISTER_DEFAULT = 0x10;
+  union FirstFilterConfiguration
+  {
+    struct Fields
+    {
+      uint8_t charge_discharge_current : 6;
+      uint8_t first_filter_iterations : 2;
+    } fields;
+    uint8_t uint8;
+  };
+  const static uint8_t SECOND_FILTER_REGISTER_ADDRESS = 0x5D;
+  const static uint8_t SECOND_FILTER_REGISTER_DEFAULT = 0x24;
+  union SecondFilterConfiguration
+  {
+    struct Fields
+    {
+      uint8_t sample_period : 3;
+      uint8_t second_filter_iterations : 2;
+      uint8_t charge_discharge_time : 3;
+    } fields;
+    uint8_t uint8;
+  };
   const static uint8_t ECR_REGISTER_ADDRESS = 0x5E;
   union ElectrodeConfiguration
   {
@@ -316,8 +335,8 @@ private:
     uint8_t DEBOUNCE;
 
     // configuration registers
-    uint8_t CDC;
-    uint8_t CDT;
+    uint8_t FIRST_FILTER;
+    uint8_t SECOND_FILTER;
     uint8_t ECR;
 
     // auto-configuration registers
@@ -354,8 +373,8 @@ private:
       NCLPROXT(0x00),
       FDLPROXT(0x00),
       DEBOUNCE(0x11),
-      CDC(0xFF),
-      CDT(0x30),
+      FIRST_FILTER(0xFF),
+      SECOND_FILTER(0x30),
       ECR(0xC0), // default to fast baseline startup, no electrodes enabled, no proximity
       ACCR0(0x00),
       ACCR1(0x00),

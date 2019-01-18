@@ -53,6 +53,7 @@ void loop()
   uint16_t channel_baseline_data = mpr121.getChannelBaselineData(constants::channel);
   Serial << "channel_baseline_data: " << channel_baseline_data << "\n";
 
+  mpr121.setSamplePeriod(constants::device_address,MPR121::SAMPLE_PERIOD_2MS);
   Serial << "\n";
   delay(constants::loop_delay);
 }
