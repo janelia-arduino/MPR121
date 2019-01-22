@@ -408,6 +408,160 @@ uint16_t MPR121::getDeviceChannelBaselineData(DeviceAddress device_address,
   return device_channel_baseline_data << BASELINE_DATA_BIT_SHIFT;
 }
 
+void MPR121::setBaselineTracking(DeviceAddress device_address,
+  BaselineTracking baseline_tracking)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  ElectrodeConfiguration electrode_configuration_backup;
+  read(device_address,ECR_REGISTER_ADDRESS,electrode_configuration_backup.uint8);
+  ElectrodeConfiguration electrode_configuration;
+  electrode_configuration.uint8 = 0;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration.uint8);
+  electrode_configuration.fields.calibration_lock = baseline_tracking;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration_backup.uint8);
+  electrode_configuration_backup.fields.calibration_lock = baseline_tracking;
+  write(device_address,ECR_REGISTER_ADDRESS,electrode_configuration_backup.uint8);
+}
+
+void MPR121::setDebounce(DeviceAddress device_address,
+  uint8_t touch_debounce,
+  uint8_t release_debounce)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  DebounceConfiguration debounce_configuration;
+  debounce_configuration.fields.touch_debounce = touch_debounce;
+  debounce_configuration.fields.release_debounce = release_debounce;
+  pauseChannels(device_address);
+  write(device_address,DEBOUNCE_REGISTER_ADDRESS,debounce_configuration.uint8);
+  resumeChannels(device_address);
+}
+
+void MPR121::setChargeDischargeCurrent(DeviceAddress device_address,
+  uint8_t charge_discharge_current)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  charge_discharge_current = constrain(charge_discharge_current,
+    CHARGE_DISCHARGE_CURRENT_MIN,
+    CHARGE_DISCHARGE_CURRENT_MAX);
+  AFE1Configuration afe1;
+  read(device_address,AFE1_REGISTER_ADDRESS,afe1.uint8);
+  afe1.fields.charge_discharge_current = charge_discharge_current;
+  pauseChannels(device_address);
+  write(device_address,AFE1_REGISTER_ADDRESS,afe1.uint8);
+  resumeChannels(device_address);
+}
+
+void MPR121::setDeviceChannelChargeDischargeCurrent(DeviceAddress device_address,
+  uint8_t device_channel,
+  uint8_t charge_discharge_current)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if ((device_index < 0) || (device_channel >= CHANNELS_PER_DEVICE))
+  {
+    return;
+  }
+  charge_discharge_current = constrain(charge_discharge_current,
+    CHARGE_DISCHARGE_CURRENT_MIN,
+    CHARGE_DISCHARGE_CURRENT_MAX);
+  uint8_t register_address = CDC0_REGISTER_ADDRESS + device_channel;
+  pauseChannels(device_address);
+  write(device_address,register_address,charge_discharge_current);
+  resumeChannels(device_address);
+}
+
+void MPR121::setChargeDischargeTime(DeviceAddress device_address,
+  ChargeDischargeTime charge_discharge_time)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  AFE2Configuration afe2;
+  read(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2.fields.charge_discharge_time = charge_discharge_time;
+  pauseChannels(device_address);
+  write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  resumeChannels(device_address);
+}
+
+void MPR121::setDeviceChannelChargeDischargeTime(DeviceAddress device_address,
+  uint8_t device_channel,
+  ChargeDischargeTime charge_discharge_time)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if ((device_index < 0) || (device_channel >= CHANNELS_PER_DEVICE))
+  {
+    return;
+  }
+  uint8_t register_address = CDT0_REGISTER_ADDRESS + (device_channel / CDT_DIVISOR);
+  uint8_t bit_shift = CDT_OFFSET * (device_channel % CDT_DIVISOR);
+  uint8_t charge_discharge_time_shifted = (uint8_t)charge_discharge_time << bit_shift;
+  pauseChannels(device_address);
+  write(device_address,register_address,charge_discharge_time_shifted);
+  resumeChannels(device_address);
+}
+
+void MPR121::setFirstFilterIterations(DeviceAddress device_address,
+  FirstFilterIterations first_filter_iterations)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  AFE1Configuration afe1;
+  read(device_address,AFE1_REGISTER_ADDRESS,afe1.uint8);
+  afe1.fields.first_filter_iterations = first_filter_iterations;
+  pauseChannels(device_address);
+  write(device_address,AFE1_REGISTER_ADDRESS,afe1.uint8);
+  resumeChannels(device_address);
+}
+
+void MPR121::setSecondFilterIterations(DeviceAddress device_address,
+  SecondFilterIterations second_filter_iterations)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  AFE2Configuration afe2;
+  read(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2.fields.second_filter_iterations = second_filter_iterations;
+  pauseChannels(device_address);
+  write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  resumeChannels(device_address);
+}
+
+void MPR121::setSamplePeriod(DeviceAddress device_address,
+  SamplePeriod sample_period)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return;
+  }
+  AFE2Configuration afe2;
+  read(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2.fields.sample_period = sample_period;
+  pauseChannels(device_address);
+  write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  resumeChannels(device_address);
+}
+
 // private
 
 int MPR121::deviceAddressToDeviceIndex(DeviceAddress device_address)
@@ -431,9 +585,9 @@ bool MPR121::setup(DeviceAddress device_address)
   delay(1);
 
   uint8_t register_data = 0;
-  read(device_address,SECOND_FILTER_REGISTER_ADDRESS,register_data);
+  read(device_address,AFE2_REGISTER_ADDRESS,register_data);
 
-  if (register_data == SECOND_FILTER_REGISTER_DEFAULT)
+  if (register_data == AFE2_REGISTER_DEFAULT)
   {
     applySettings(device_address,default_settings_);
     return SUCCESS;
@@ -442,17 +596,6 @@ bool MPR121::setup(DeviceAddress device_address)
   {
     return !SUCCESS;
   }
-}
-
-void MPR121::setSamplePeriod(DeviceAddress device_address,
-  SamplePeriod sample_period)
-{
-  SecondFilterConfiguration sfc;
-  read(device_address,SECOND_FILTER_REGISTER_ADDRESS,sfc.uint8);
-  sfc.fields.sample_period = sample_period;
-  pauseChannels(device_address);
-  write(device_address,SECOND_FILTER_REGISTER_ADDRESS,sfc.uint8);
-  resumeChannels(device_address);
 }
 
 void MPR121::pauseChannels(DeviceAddress device_address)
@@ -510,8 +653,6 @@ void MPR121::applySettings(DeviceAddress device_address,
   write(device_address,NCLPROXT_REGISTER_ADDRESS,settings.NCLPROXT);
   write(device_address,FDLPROXT_REGISTER_ADDRESS,settings.FDLPROXT);
   write(device_address,DEBOUNCE_REGISTER_ADDRESS,settings.DEBOUNCE);
-  write(device_address,FIRST_FILTER_REGISTER_ADDRESS,settings.FIRST_FILTER);
-  write(device_address,SECOND_FILTER_REGISTER_ADDRESS,settings.SECOND_FILTER);
   write(device_address,ECR_REGISTER_ADDRESS,settings.ECR);
   write(device_address,ACCR0_REGISTER_ADDRESS,settings.ACCR0);
   write(device_address,ACCR1_REGISTER_ADDRESS,settings.ACCR1);

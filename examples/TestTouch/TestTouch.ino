@@ -14,10 +14,21 @@ void setup()
   mpr121.setupSingleDevice(Wire,
     constants::device_address,
     constants::fast_mode);
-  mpr121.startChannels(constants::physical_channel_count,
-    constants::proximity_mode);
+
   mpr121.setAllChannelsThresholds(constants::touch_threshold,
     constants::release_threshold);
+  mpr121.setDebounce(constants::device_address,
+    constants::touch_debounce,
+    constants::release_debounce);
+  mpr121.setBaselineTracking(constants::device_address,constants::baseline_tracking);
+  mpr121.setChargeDischargeCurrent(constants::device_address,constants::charge_discharge_current);
+  mpr121.setChargeDischargeTime(constants::device_address,constants::charge_discharge_time);
+  mpr121.setFirstFilterIterations(constants::device_address,constants::first_filter_iterations);
+  mpr121.setSecondFilterIterations(constants::device_address,constants::second_filter_iterations);
+  mpr121.setSamplePeriod(constants::device_address,constants::sample_period);
+
+  mpr121.startChannels(constants::physical_channel_count,
+    constants::proximity_mode);
 }
 
 void loop()
@@ -53,7 +64,6 @@ void loop()
   uint16_t channel_baseline_data = mpr121.getChannelBaselineData(constants::channel);
   Serial << "channel_baseline_data: " << channel_baseline_data << "\n";
 
-  mpr121.setSamplePeriod(constants::device_address,MPR121::SAMPLE_PERIOD_2MS);
   Serial << "\n";
   delay(constants::loop_delay);
 }

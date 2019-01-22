@@ -104,6 +104,62 @@ public:
   uint16_t getDeviceChannelBaselineData(DeviceAddress device_address,
     uint8_t device_channel);
 
+  enum BaselineTracking
+    {
+     BASELINE_TRACKING_INIT_0 = 0x00, // default
+     BASELINE_TRACKING_DISABLED = 0x01,
+     BASELINE_TRACKING_INIT_5BIT = 0x02,
+     BASELINE_TRACKING_INIT_10BIT = 0x03,
+    };
+  void setBaselineTracking(DeviceAddress device_address,
+    BaselineTracking baseline_tracking);
+  void setDebounce(DeviceAddress device_address,
+    uint8_t touch_debounce,
+    uint8_t release_debounce);
+
+  const static uint8_t CHARGE_DISCHARGE_CURRENT_MIN = 1;
+  const static uint8_t CHARGE_DISCHARGE_CURRENT_MAX = 63;
+  void setChargeDischargeCurrent(DeviceAddress device_address,
+    uint8_t charge_discharge_current);
+  void setDeviceChannelChargeDischargeCurrent(DeviceAddress device_address,
+    uint8_t device_channel,
+    uint8_t charge_discharge_current);
+  enum ChargeDischargeTime
+    {
+     CHARGE_DISCHARGE_TIME_DISABLED = 0x00,
+     CHARGE_DISCHARGE_TIME_HALF_US = 0x01, // default
+     CHARGE_DISCHARGE_TIME_1US = 0x02,
+     CHARGE_DISCHARGE_TIME_2US = 0x03,
+     CHARGE_DISCHARGE_TIME_4US = 0x04,
+     CHARGE_DISCHARGE_TIME_8US = 0x05,
+     CHARGE_DISCHARGE_TIME_16US = 0x06,
+     CHARGE_DISCHARGE_TIME_32US = 0x07
+    };
+  void setChargeDischargeTime(DeviceAddress device_address,
+    ChargeDischargeTime charge_discharge_time);
+  void setDeviceChannelChargeDischargeTime(DeviceAddress device_address,
+    uint8_t device_channel,
+    ChargeDischargeTime charge_discharge_time);
+
+  enum FirstFilterIterations
+    {
+     FIRST_FILTER_ITERATIONS_6 = 0x00, // default
+     FIRST_FILTER_ITERATIONS_10 = 0x01,
+     FIRST_FILTER_ITERATIONS_18 = 0x02,
+     FIRST_FILTER_ITERATIONS_34 = 0x03,
+    };
+  void setFirstFilterIterations(DeviceAddress device_address,
+    FirstFilterIterations first_filter_iterations);
+  enum SecondFilterIterations
+    {
+     SECOND_FILTER_ITERATIONS_4 = 0x00, // default
+     SECOND_FILTER_ITERATIONS_6 = 0x01,
+     SECOND_FILTER_ITERATIONS_10 = 0x02,
+     SECOND_FILTER_ITERATIONS_18 = 0x03,
+    };
+  void setSecondFilterIterations(DeviceAddress device_address,
+    SecondFilterIterations second_filter_iterations);
+
   // Sets the sample period of the MPR121 - the time between capacitive
   // readings. Higher values consume less power, but are less responsive.
   // sample intervals
@@ -113,7 +169,7 @@ public:
      SAMPLE_PERIOD_2MS = 0x01,
      SAMPLE_PERIOD_4MS = 0x02,
      SAMPLE_PERIOD_8MS = 0x03,
-     SAMPLE_PERIOD_16MS = 0x04,
+     SAMPLE_PERIOD_16MS = 0x04, // default
      SAMPLE_PERIOD_32MS = 0x05,
      SAMPLE_PERIOD_64MS = 0x06,
      SAMPLE_PERIOD_128MS = 0x07
@@ -214,11 +270,22 @@ private:
 
   // debounce settings
   const static uint8_t DEBOUNCE_REGISTER_ADDRESS = 0x5B;
+  union DebounceConfiguration
+  {
+    struct Fields
+    {
+      uint8_t touch_debounce : 3;
+      uint8_t space0 : 1;
+      uint8_t release_debounce : 3;
+      uint8_t space1 : 1;
+    } fields;
+    uint8_t uint8;
+  };
 
   // // configuration registers
-  const static uint8_t FIRST_FILTER_REGISTER_ADDRESS = 0x5C;
-  const static uint8_t FIRST_FILTER_REGISTER_DEFAULT = 0x10;
-  union FirstFilterConfiguration
+  const static uint8_t AFE1_REGISTER_ADDRESS = 0x5C;
+  const static uint8_t AFE1_REGISTER_DEFAULT = 0x10;
+  union AFE1Configuration
   {
     struct Fields
     {
@@ -227,9 +294,9 @@ private:
     } fields;
     uint8_t uint8;
   };
-  const static uint8_t SECOND_FILTER_REGISTER_ADDRESS = 0x5D;
-  const static uint8_t SECOND_FILTER_REGISTER_DEFAULT = 0x24;
-  union SecondFilterConfiguration
+  const static uint8_t AFE2_REGISTER_ADDRESS = 0x5D;
+  const static uint8_t AFE2_REGISTER_DEFAULT = 0x24;
+  union AFE2Configuration
   {
     struct Fields
     {
@@ -255,13 +322,9 @@ private:
   const static uint8_t CDC0_REGISTER_ADDRESS = 0x5F;
 
   // electrode charge times
-  const static uint8_t CDT01_REGISTER_ADDRESS = 0x6C;
-  const static uint8_t CDT23_REGISTER_ADDRESS = 0x6D;
-  const static uint8_t CDT45_REGISTER_ADDRESS = 0x6E;
-  const static uint8_t CDT67_REGISTER_ADDRESS = 0x6F;
-  const static uint8_t CDT89_REGISTER_ADDRESS = 0x70;
-  const static uint8_t CDT1011_REGISTER_ADDRESS = 0x71;
-  const static uint8_t CDTPROX_REGISTER_ADDRESS = 0x72;
+  const static uint8_t CDT0_REGISTER_ADDRESS = 0x6C;
+  const static uint8_t CDT_DIVISOR = 2;
+  const static uint8_t CDT_OFFSET = 4;
 
   // GPIO
   const static uint8_t CTL0_REGISTER_ADDRESS = 0x73;
@@ -335,8 +398,6 @@ private:
     uint8_t DEBOUNCE;
 
     // configuration registers
-    uint8_t FIRST_FILTER;
-    uint8_t SECOND_FILTER;
     uint8_t ECR;
 
     // auto-configuration registers
@@ -373,8 +434,6 @@ private:
       NCLPROXT(0x00),
       FDLPROXT(0x00),
       DEBOUNCE(0x11),
-      FIRST_FILTER(0xFF),
-      SECOND_FILTER(0x30),
       ECR(0xC0), // default to fast baseline startup, no electrodes enabled, no proximity
       ACCR0(0x00),
       ACCR1(0x00),
