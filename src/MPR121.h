@@ -22,6 +22,9 @@ public:
      ADDRESS_5C = 0x5C,
      ADDRESS_5D = 0x5D,
     };
+  enum {PHYSICAL_CHANNELS_PER_DEVICE=12};
+  enum {CHANNELS_PER_DEVICE=13};
+  enum {DEVICE_COUNT_MAX=4};
 
   // Convenience method when using a single device
   bool setupSingleDevice(TwoWire & wire=Wire,
@@ -178,9 +181,6 @@ public:
     SamplePeriod sample_period);
 
 private:
-  enum {PHYSICAL_CHANNELS_PER_DEVICE=12};
-  enum {CHANNELS_PER_DEVICE=13};
-  enum {DEVICE_COUNT_MAX=4};
   uint8_t device_count_;
   DeviceAddress device_addresses_[DEVICE_COUNT_MAX];
   ProximityMode proximity_modes_[DEVICE_COUNT_MAX];
