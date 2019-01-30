@@ -32,6 +32,8 @@ public:
     bool fast_mode=false);
 
   // Methods for using a single device or multiple devices
+  bool communicating(DeviceAddress device_address);
+
   enum ProximityMode
     {
      DISABLED = 0b00,
@@ -66,6 +68,7 @@ public:
     bool fast_mode=false);
 
   void addDevice(DeviceAddress device_address);
+  bool setupDevice(DeviceAddress device_address);
   bool setupAllDevices();
 
   void startChannels(DeviceAddress device_address,
@@ -191,10 +194,6 @@ private:
   const static int DEVICE_INDEX_NONE = -1;
   int deviceAddressToDeviceIndex(DeviceAddress device_address);
 
-  const static bool SUCCESS = true;
-
-  bool setup(DeviceAddress device_address);
-
   template<typename T>
   void write(DeviceAddress device_address,
     uint8_t register_address,
@@ -296,6 +295,7 @@ private:
   };
   const static uint8_t AFE2_REGISTER_ADDRESS = 0x5D;
   const static uint8_t AFE2_REGISTER_DEFAULT = 0x24;
+  uint8_t afe2_register_values_[DEVICE_COUNT_MAX];
   union AFE2Configuration
   {
     struct Fields

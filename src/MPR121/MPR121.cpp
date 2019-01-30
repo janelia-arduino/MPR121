@@ -16,10 +16,28 @@ bool MPR121::setupSingleDevice(TwoWire & wire,
   DeviceAddress device_address,
   bool fast_mode)
 {
-  setWire(Wire,fast_mode);
+  setWire(wire,fast_mode);
   addDevice(device_address);
-  bool successfully_setup = setupAllDevices();
+  bool successfully_setup = setupDevice(device_address);
   return successfully_setup;
+}
+
+bool MPR121::communicating(DeviceAddress device_address)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return false;
+  }
+
+  uint8_t register_data = 0;
+  read(device_address,AFE2_REGISTER_ADDRESS,register_data);
+
+  if (register_data == afe2_register_values_[device_index])
+  {
+    return true;
+  }
+  return false;
 }
 
 // proximity_mode:
@@ -155,6 +173,28 @@ void MPR121::addDevice(DeviceAddress device_address)
   uint8_t device_index = device_count_++;
   device_addresses_[device_index] = device_address;
   proximity_modes_[device_index] = DISABLED;
+  afe2_register_values_[device_index] = AFE2_REGISTER_DEFAULT;
+}
+
+bool MPR121::setupDevice(DeviceAddress device_address)
+{
+  int device_index = deviceAddressToDeviceIndex(device_address);
+  if (device_index < 0)
+  {
+    return false;
+  }
+
+  // soft reset
+  write(device_address,SRST_REGISTER_ADDRESS,SRST_REGISTER_VALUE);
+  afe2_register_values_[device_index] = AFE2_REGISTER_DEFAULT;
+  delay(1);
+
+  if (communicating(device_address))
+  {
+    applySettings(device_address,default_settings_);
+    return true;
+  }
+  return false;
 }
 
 bool MPR121::setupAllDevices()
@@ -163,7 +203,7 @@ bool MPR121::setupAllDevices()
   bool all_successfully_setup = true;
   for (uint8_t device_index=0; device_index<device_count_; ++device_index)
   {
-    successfully_setup = setup(device_addresses_[device_index]);
+    successfully_setup = setupDevice(device_addresses_[device_index]);
     all_successfully_setup = (all_successfully_setup && successfully_setup);
   }
   return all_successfully_setup;
@@ -494,6 +534,7 @@ void MPR121::setChargeDischargeTime(DeviceAddress device_address,
   afe2.fields.charge_discharge_time = charge_discharge_time;
   pauseChannels(device_address);
   write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2_register_values_[device_index] = afe2.uint8;
   resumeChannels(device_address);
 }
 
@@ -543,6 +584,7 @@ void MPR121::setSecondFilterIterations(DeviceAddress device_address,
   afe2.fields.second_filter_iterations = second_filter_iterations;
   pauseChannels(device_address);
   write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2_register_values_[device_index] = afe2.uint8;
   resumeChannels(device_address);
 }
 
@@ -559,6 +601,7 @@ void MPR121::setSamplePeriod(DeviceAddress device_address,
   afe2.fields.sample_period = sample_period;
   pauseChannels(device_address);
   write(device_address,AFE2_REGISTER_ADDRESS,afe2.uint8);
+  afe2_register_values_[device_index] = afe2.uint8;
   resumeChannels(device_address);
 }
 
@@ -576,26 +619,6 @@ int MPR121::deviceAddressToDeviceIndex(DeviceAddress device_address)
     }
   }
   return device_index;
-}
-
-bool MPR121::setup(DeviceAddress device_address)
-{
-  // soft reset
-  write(device_address,SRST_REGISTER_ADDRESS,SRST_REGISTER_VALUE);
-  delay(1);
-
-  uint8_t register_data = 0;
-  read(device_address,AFE2_REGISTER_ADDRESS,register_data);
-
-  if (register_data == AFE2_REGISTER_DEFAULT)
-  {
-    applySettings(device_address,default_settings_);
-    return SUCCESS;
-  }
-  else
-  {
-    return !SUCCESS;
-  }
 }
 
 void MPR121::pauseChannels(DeviceAddress device_address)

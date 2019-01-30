@@ -12,10 +12,12 @@ namespace constants
 {
 const long baud = 115200;
 
+TwoWire * wire_ptr = &Wire;
+
 const MPR121::DeviceAddress device_address = MPR121::ADDRESS_5A;
 const bool fast_mode = true;
 
-const size_t loop_delay = 200;
+const size_t loop_delay = 1000;
 
 const uint8_t channel = 0;
 

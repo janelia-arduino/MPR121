@@ -15,6 +15,8 @@ namespace constants
 {
 extern const long baud;
 
+extern TwoWire * wire_ptr;
+
 extern const MPR121::DeviceAddress device_address;
 extern const bool fast_mode;
 
