@@ -172,7 +172,7 @@ void MPR121::addDevice(DeviceAddress device_address)
   }
   uint8_t device_index = device_count_++;
   device_addresses_[device_index] = device_address;
-  proximity_modes_[device_index] = DISABLED;
+  proximity_modes_[device_index] = PROXIMITY_MODE_DISABLED;
   afe2_register_values_[device_index] = AFE2_REGISTER_DEFAULT;
 }
 

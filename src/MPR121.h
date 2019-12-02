@@ -36,14 +36,14 @@ public:
 
   enum ProximityMode
     {
-     DISABLED = 0b00,
+     PROXIMITY_MODE_DISABLED = 0b00,
      COMBINE_CHANNELS_0_TO_1 = 0b01,
      COMBINE_CHANNELS_0_TO_3 = 0b10,
      COMBINE_CHANNELS_0_TO_11 = 0b11,
     };
   void startChannels(uint8_t physical_channel_count,
-    ProximityMode proximity_mode=DISABLED);
-  void startAllChannels(ProximityMode proximity_mode=DISABLED);
+    ProximityMode proximity_mode=PROXIMITY_MODE_DISABLED);
+  void startAllChannels(ProximityMode proximity_mode=PROXIMITY_MODE_DISABLED);
   void stopAllChannels();
 
   uint8_t getChannelCount();
@@ -73,11 +73,11 @@ public:
 
   void startChannels(DeviceAddress device_address,
     uint8_t physical_channel_count,
-    ProximityMode proximity_mode=DISABLED);
+    ProximityMode proximity_mode=PROXIMITY_MODE_DISABLED);
   void startChannelsAllDevices(uint8_t physical_channel_count,
-    ProximityMode proximity_mode=DISABLED);
+    ProximityMode proximity_mode=PROXIMITY_MODE_DISABLED);
   void startAllChannels(DeviceAddress device_address,
-    ProximityMode proximity_mode=DISABLED);
+    ProximityMode proximity_mode=PROXIMITY_MODE_DISABLED);
   void stopAllChannels(DeviceAddress device_address);
 
   uint8_t getDeviceCount();
