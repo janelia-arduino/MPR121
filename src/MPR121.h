@@ -2,7 +2,7 @@
 // MPR121.h
 //
 // Authors:
-// Peter Polidoro peterpolidoro@gmail.com
+// Peter Polidoro peter@polidoro.io
 // ----------------------------------------------------------------------------
 #ifndef MPR121_H
 #define MPR121_H
