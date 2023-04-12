@@ -42,41 +42,50 @@ void loop()
   delay(constants::loop_delay);
   if (!mpr121.communicating(constants::device_address))
   {
-    Serial << "mpr121 device not commmunicating!\n\n";
+    Serial.println("mpr121 device not commmunicating!\n");
     return;
   }
 
   uint8_t channel_count = mpr121.getChannelCount();
-  Serial << "channel_count: " << channel_count << "\n";
+  Serial.print("channel_count: ");
+  Serial.println(channel_count);
   uint8_t running_channel_count = mpr121.getRunningChannelCount();
-  Serial << "running_channel_count: " << running_channel_count << "\n";
+  Serial.print("running_channel_count: ");
+  Serial.println(running_channel_count);
 
   uint16_t touch_status = mpr121.getTouchStatus(constants::device_address);
-  Serial << "touch_status: " << _BIN(touch_status) << "\n";
+  Serial.print("touch_status: ");
+  Serial.println(touch_status, BIN);
   if (mpr121.overCurrentDetected(touch_status))
   {
-    Serial << "Over current detected!\n\n";
+    Serial.println("Over current detected!\n");
     mpr121.startChannels(constants::physical_channel_count,
       constants::proximity_mode);
     return;
   }
   bool any_touched = mpr121.anyTouched(touch_status);
-  Serial << "any_touched: " << any_touched << "\n";
+  Serial.print("any_touched: ");
+  Serial.println(any_touched);
   bool device_channel_touched = mpr121.deviceChannelTouched(touch_status,
     constants::channel);
-  Serial << "device_channel_touched: " << device_channel_touched << "\n";
+  Serial.print("device_channel_touched: ");
+  Serial.println(device_channel_touched);
 
   uint16_t out_of_range_status = mpr121.getOutOfRangeStatus(constants::device_address);
-  Serial << "out_of_range_status: " << _BIN(out_of_range_status) << "\n";
+  Serial.print("out_of_range_status: ");
+  Serial.println(out_of_range_status, BIN);
 
   bool channel_touched = mpr121.channelTouched(constants::channel);
-  Serial << "channel_touched: " << channel_touched << "\n";
+  Serial.print("channel_touched: ");
+  Serial.println(channel_touched);
 
   uint16_t channel_filtered_data = mpr121.getChannelFilteredData(constants::channel);
-  Serial << "channel_filtered_data: " << channel_filtered_data << "\n";
+  Serial.print("channel_filtered_data: ");
+  Serial.println(channel_filtered_data);
 
   uint16_t channel_baseline_data = mpr121.getChannelBaselineData(constants::channel);
-  Serial << "channel_baseline_data: " << channel_baseline_data << "\n";
+  Serial.print("channel_baseline_data: ");
+  Serial.println(channel_baseline_data);
 
-  Serial << "\n";
+  Serial.println();
 }
